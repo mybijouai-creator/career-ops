@@ -32,6 +32,39 @@ Open http://localhost:3000. The app reads the career-ops checkout it lives in
   **it never submits for you** — you always press the button.
 - **Today / Analytics / CV / Config** — action queue, funnel, CV editing with
   preview, settings.
+- **Agent** — the assistant as a route of its own (`/agent`), which on mobile is
+  a tab rather than a bubble floating over whatever you were reading.
+- **Interviews** — reads your own `interview-prep/` documents and the rows
+  currently at Interview. It does not write them: generating a loop plan is a
+  core mode with no HTTP route yet, so the page hands you the invocation
+  instead of showing an invented plan.
+
+## Installable app (PWA)
+
+The web app installs to a phone home screen and stays useful without a network.
+
+- **Launches into the decision queue.** `start_url` is `/`, not a dashboard —
+  the point of the app being on your home screen is that opening it puts a
+  decision in front of you.
+- **Bottom tab bar is the only global nav on mobile** (Today, Explore, Agent,
+  Pipeline, Stats). Secondary surfaces are reached from the surface that owns
+  them and from Settings.
+- **Readable offline.** The service worker precaches the shell, serves the
+  pipeline, reports and PDFs stale-while-revalidate, and treats the spend ledger
+  as network-first with a 24h fallback — a cost figure of unknown age is worse
+  than none. Mutations are never cached.
+- **Writes queue and replay.** A status change or follow-up log made offline is
+  held in IndexedDB with a deterministic idempotency key and replayed through
+  Background Sync when you reconnect. The UI shows it as queued, not saved.
+- **Approvals never replay.** An approval or an irreversible write captured
+  offline is stored as an *intent*, not a queued request. On reconnect you are
+  asked again, and the request is issued against live state — a stale diff must
+  not be able to write files. Settings → Offline & data is where those come
+  back.
+
+The caching rules and the queue's classification live in `public/pwa/*.mjs`,
+shared verbatim between the service worker and the app bundle so the two cannot
+drift, and asserted in `tests/lib/pwa-*.test.mjs`.
 
 ## Safety
 

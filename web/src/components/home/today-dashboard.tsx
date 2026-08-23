@@ -12,6 +12,8 @@ import { DiscoveryCard } from "@/components/explore/discovery-card";
 import { FollowUpCard, type FollowUp } from "@/components/home/follow-up-card";
 import { DecisionCard } from "@/components/home/decision-card";
 import { QuickEvaluate } from "@/components/quick-evaluate";
+import { PublishDecisionCount } from "@/components/mobile/decision-count";
+import { WorkerPills } from "@/components/jobs/worker-pills";
 
 // The retention "Today": a dual-loop action queue (the maintainer's
 // "N new matches this week · M follow-ups due"). SUPPLY loop = fresh free-scan
@@ -74,10 +76,16 @@ export function TodayDashboard({
 
   const newThisWeek = freshCount;
   const allClear = newThisWeek === 0 && overdue === 0 && awaiting.length === 0;
+  // The Today tab's badge. One item per role awaiting a decision, one per overdue
+  // follow-up, and ONE for a fresh scan batch however many it found — the batch
+  // is a single triage decision, so counting each posting would inflate the badge
+  // into noise.
+  const decisionCount = awaiting.length + overdue + (newThisWeek > 0 ? 1 : 0);
   const inboxUrls = useMemo(() => new Set(inbox.map((j) => j.url)), [inbox]);
 
   return (
-    <div className="mx-auto max-w-5xl px-6 py-10 max-sm:pb-24">
+    <div className="mx-auto max-w-5xl px-6 py-10">
+      <PublishDecisionCount count={decisionCount} />
       <section className="dot-bg relative overflow-hidden rounded-2xl border border-border bg-surface/40 px-7 py-10 md:px-10 md:py-12">
         <HeroGlow />
         {/* Readability scrim between the animated glow (z-0) and the copy (z-10). */}
@@ -157,6 +165,13 @@ export function TodayDashboard({
           )}
         </Section>
       )}
+
+      {/* D. Workers — the prototype's WORKERS card. Mobile only: on desktop these
+             pills live in the sidebar, and the bottom tab bar replaced the drawer
+             that used to carry them on a phone. */}
+      <div className="mt-8 md:hidden">
+        <WorkerPills />
+      </div>
 
       {allClear && (
         <div className="mt-8 rounded-2xl border border-border bg-surface/30 px-6 py-10 text-center">

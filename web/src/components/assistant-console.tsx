@@ -132,8 +132,17 @@ function msgText(m: Msg): string {
   return m.parts.filter((p): p is Extract<Part, { type: "text" }> => p.type === "text").map((p) => p.text).join(" ").trim();
 }
 
-export function AssistantConsole() {
-  const [open, setOpen] = useState(false);
+/**
+ * `docked` is the desktop floating panel this component has always been.
+ * `page` is the mobile Agent ROUTE from the PWA prototype: the composer is a
+ * surface of its own there, not a bubble over another surface, because on a
+ * phone a 400px panel pinned over the tab bar covers the thing you were
+ * reading. Same conversation, same streaming, same action registry — only the
+ * frame differs.
+ */
+export function AssistantConsole({ variant = "docked" }: { variant?: "docked" | "page" } = {}) {
+  // The page variant has no launcher: arriving on /agent IS the open gesture.
+  const [open, setOpen] = useState(variant === "page");
   const [cliId, setCliId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
@@ -476,12 +485,19 @@ export function AssistantConsole() {
     return chips.slice(0, 4);
   }, [pathname, pipeline.inbox, pipeline.applications]);
 
+  // On /agent the console IS the surface (variant="page"). The docked instance in
+  // the app shell must stand down there, or desktop shows two consoles holding
+  // two separate conversations.
+  if (variant === "docked" && pathname === "/agent") return null;
+
   return (
     <>
-      {!open && (
+      {!open && variant === "docked" && (
         <button
           onClick={() => setOpen(true)}
-          className="fixed bottom-5 right-5 z-50 flex items-center justify-center gap-2 rounded-full border border-border bg-surface/90 py-1.5 pl-1.5 pr-4 shadow-lg backdrop-blur transition-colors hover:bg-surface-hover max-sm:min-h-[44px]"
+          // Hidden below md: the bottom tab bar's Agent tab is the mobile way in,
+          // and a floating bubble would sit on top of it.
+          className="fixed bottom-5 right-5 z-50 hidden items-center justify-center gap-2 rounded-full border border-border bg-surface/90 py-1.5 pl-1.5 pr-4 shadow-lg backdrop-blur transition-colors hover:bg-surface-hover md:flex"
           aria-label="Open assistant"
         >
           <CoMark size={26} />
@@ -490,7 +506,15 @@ export function AssistantConsole() {
       )}
 
       {open && (
-        <div className="fixed bottom-5 right-5 z-50 flex h-[600px] max-h-[80vh] w-[400px] max-w-[calc(100vw-2.5rem)] flex-col overflow-hidden rounded-2xl border border-border bg-surface shadow-2xl">
+        <div
+          className={
+            variant === "page"
+              ? // Fills the route. The tab bar's clearance comes from the page
+                // wrapper, so the composer sits just above it rather than under it.
+                "flex min-h-[calc(100dvh-13rem)] flex-col overflow-hidden rounded-2xl border border-border bg-surface"
+              : "fixed bottom-5 right-5 z-50 hidden h-[600px] max-h-[80vh] w-[400px] max-w-[calc(100vw-2.5rem)] flex-col overflow-hidden rounded-2xl border border-border bg-surface shadow-2xl md:flex"
+          }
+        >
           <header className="flex items-center gap-2.5 border-b border-border px-4 py-3">
             <CoMark size={26} />
             <div className="flex-1">

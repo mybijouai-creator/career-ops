@@ -7,6 +7,9 @@ import { cn } from "@/lib/cn";
 import { CompanyLogo } from "@/components/company-logo";
 import { scoreNum, scoreTone } from "@/lib/format";
 import type { Application } from "@/lib/career-ops";
+import { usePwa } from "@/components/pwa/pwa-provider";
+import { useToast } from "@/components/mobile/toast";
+import { useSheet } from "@/components/mobile/sheet";
 
 // Awaiting-decision row: a scored role with no terminal status. Primary action
 // opens the report (PDF + Apply live there). Skip / Applied still write status.
@@ -16,11 +19,24 @@ export function DecisionCard({ app }: { app: Application }) {
   const [done, setDone] = useState<string | null>(null);
   const score = scoreNum(app.score);
   const tone = scoreTone(app.score);
+  const { mutate } = usePwa();
+  const { toast } = useToast();
+  const sheet = useSheet();
 
+  // Queued offline and replayed on reconnect — see status-select.tsx for why a
+  // status advance is safe to replay unattended.
   const setStatus = async (status: "Applied" | "Discarded") => {
     setBusy(status);
     try {
-      await fetch("/api/status", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ n: app.n, status }) });
+      const out = await mutate("status-advance", { target: app.n, payload: { n: app.n, status } });
+      if (out.kind === "queued") {
+        toast(`Queued · ${app.company} → ${status} on reconnect.`, "queued");
+      } else if (out.kind === "unavailable") {
+        toast(out.reason, "warn");
+        return;
+      }
+      // The card leaves the queue either way: the decision has been made and
+      // recorded, and re-showing it would invite a second tap on the same row.
       setDone(status);
       router.refresh();
     } catch {
@@ -32,13 +48,40 @@ export function DecisionCard({ app }: { app: Application }) {
 
   if (done) return null;
 
+  const whySheet = {
+    title: `${app.company} — why ${app.score}`,
+    meta: `#${app.n}`,
+    body: app.notes?.trim()
+      ? app.notes
+      : "This row carries no notes. The full evaluation — blocks A–H, the comp research and the tool trace — is in the report.",
+    // The report path IS the provenance: the markdown file is the source of
+    // truth, and the app holds no separate copy of it.
+    file: app.report ? stripLink(app.report) : undefined,
+    primaryLabel: "Open the evaluation",
+    onPrimary: () => router.push(`/pipeline/${app.n}`),
+  };
+
   return (
     <div className="flex min-w-0 flex-col gap-2.5 rounded-xl border border-border bg-surface/40 p-3.5 transition hover:border-brand/30">
       <div className="flex items-start gap-2.5">
         <CompanyLogo name={app.company} size={24} />
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-medium text-foreground">{app.company}</p>
-          <p className="truncate text-[13px] text-muted">{app.role}</p>
+        {/* Below md the identity block opens the "why this score" sheet: on a
+            phone this is a glance before a one-tap decision, and making it a
+            route means a back navigation to get out of a glance. The Review
+            button below stays the explicit path on both breakpoints.
+
+            Two elements rather than one with `pointer-events-none`, because the
+            sheet only renders below md — a button that swallows a desktop click
+            and shows nothing is worse than not being a button there at all. */}
+        <button
+          type="button"
+          onClick={() => sheet.open(whySheet)}
+          className="min-w-0 flex-1 text-left md:hidden"
+        >
+          <Identity company={app.company} role={app.role} />
+        </button>
+        <div className="hidden min-w-0 flex-1 md:block">
+          <Identity company={app.company} role={app.role} />
         </div>
         {Number.isFinite(score) && score > 0 && (
           <span
@@ -81,4 +124,20 @@ export function DecisionCard({ app }: { app: Application }) {
       </div>
     </div>
   );
+}
+
+function Identity({ company, role }: { company: string; role: string }) {
+  return (
+    <>
+      <p className="truncate text-sm font-medium text-foreground">{company}</p>
+      <p className="truncate text-[13px] text-muted">{role}</p>
+    </>
+  );
+}
+
+/** The tracker's report cell is a markdown link (`[64](../reports/…md)`); the
+ *  sheet wants the bare path, which is what identifies the file on disk. */
+function stripLink(cell: string): string {
+  const m = cell.match(/\(([^)]+)\)/);
+  return (m ? m[1] : cell).replace(/^\.\.\//, "");
 }
