@@ -12,6 +12,8 @@ import { careerOpsRoot, readMemory, findReportFile, readInbox, readScanDates } f
 import { resolvePdfPaths, type PdfPaths } from "@/lib/pdf-paths.mjs";
 import { renderAndMarkPdf, writeCvHtml, pdfRunOutcome } from "@/lib/pdf-render.mjs";
 import { createCvEnvelopeFilter, type CvEnvelope } from "@/lib/cv-envelope.mjs";
+import { peekActiveCv } from "@/lib/cv-library.mjs";
+import { appendCvHistoryEntry } from "@/lib/cv-history.mjs";
 import { buildPrompt, isShellSafeCompanyName } from "@/lib/run-prompts.mjs";
 import { claudeCliArgs } from "@/lib/claude-invocation.mjs";
 import { acquireTrackerWrite, releaseTrackerWrite } from "@/lib/core/run-registry";
@@ -360,6 +362,23 @@ export const POST = withTenantHandler(async (req: Request) => {
           if (result.kind === "render-failed") {
             send({ type: "error", msg: result.error.slice(0, 200) });
             return;
+          }
+          // The PDF is confirmed on disk at this point — record which base CV
+          // produced it (cv-history.mjs). A logging failure must never turn a
+          // successful render into a reported error; the PDF is the real
+          // deliverable and it already exists.
+          try {
+            const active = peekActiveCv(careerOpsRoot());
+            appendCvHistoryEntry(careerOpsRoot(), {
+              date: today,
+              reportNum: input,
+              companySlug: paths.companySlug,
+              baseCvId: active?.id ?? null,
+              baseCvName: active?.name ?? null,
+              outputFile: path.basename(paths.finalPdf),
+            });
+          } catch (e) {
+            console.error(`cv-history: could not record report #${input}: ${e instanceof Error ? e.message : String(e)}`);
           }
           // Non-fatal issues (a defaulted page format, a tracker row not marked) still
           // surface here rather than only in a server log nobody sees.

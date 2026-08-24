@@ -184,6 +184,13 @@ background scanning as a single-tenant-only feature until this is addressed;
 each tenant can still trigger their own on-demand work through the normal
 request-scoped routes, which are fully isolated.
 
+Each tenant can also keep more than one named base CV (the CV editor's
+"+ New CV" switcher) — e.g. a "Backend" and an "AI/ML" CV — and switch which
+one is active. This is layered on top of `cv.md`, not a replacement for it:
+whichever CV is active is kept mirrored into `cv.md`, so every mode, script
+and report that reads `cv.md` directly keeps working completely unmodified.
+See `web/src/lib/cv-library.mjs` and DATA_CONTRACT.md's `cvs/` row.
+
 ## Optional: linking your LinkedIn on the /about page
 
 The `/about` credits page pulls real, public GitHub profile data automatically.

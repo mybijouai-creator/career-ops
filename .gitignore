@@ -2,6 +2,10 @@
 cv.md
 article-digest.md
 local/
+# Named base CVs (web multi-CV, cv-library.mjs) — layered on top of cv.md
+# above, same reasoning: personal content, gitignored at the default root the
+# same way tenants/{userId}/cvs/ already is via /tenants/ below.
+/cvs/
 # Everything under data/ is generated or personal at runtime — only .gitkeep
 # placeholders are tracked (verify with `git ls-files data/`). A blanket rule
 # means a new generated file (e.g. a future log/cache addition) is covered

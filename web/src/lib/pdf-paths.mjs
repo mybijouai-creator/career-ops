@@ -23,6 +23,7 @@ export function slugify(s) {
  * @typedef {Object} PdfPaths
  * @property {string} html - Where the backend writes the tailored HTML it parsed out of the agent's envelope (#2185).
  * @property {string} finalPdf - Where the backend renders the final PDF (output/cv-{candidate}-{company}-{date}.pdf).
+ * @property {string} companySlug - The company slug this run resolved from the report filename (or the "company" fallback), for callers that want it without re-parsing finalPdf's basename (e.g. cv-history.mjs).
  */
 
 /**
@@ -83,6 +84,7 @@ export function resolvePdfPaths(input, today, root, findReportFile) {
     paths: {
       html: path.join(scratchDir, `cv-web-${input}.html`),
       finalPdf: path.join(root, "output", `cv-${candidateSlug}-${companySlug}-${today}.pdf`),
+      companySlug,
     },
   };
 }

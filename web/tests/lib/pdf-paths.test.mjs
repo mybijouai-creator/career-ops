@@ -41,6 +41,7 @@ test("resolvePdfPaths: happy path builds html + finalPdf from report + profile",
     assert.equal(result.ok, true);
     assert.equal(result.paths.html, join(root, ".career-ops-web", "pdf-tmp", "cv-web-018.html"));
     assert.equal(result.paths.finalPdf, join(root, "output", "cv-jane-smith-acme-2026-07-26.pdf"));
+    assert.equal(result.paths.companySlug, "acme", "exposed for callers like cv-history.mjs, not just baked into finalPdf's basename");
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
