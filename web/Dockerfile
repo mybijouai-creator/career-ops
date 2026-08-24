@@ -37,8 +37,17 @@ WORKDIR /build
 
 # Deps in their own layer, so a source-only change does not reinstall them.
 COPY web/package.json web/package-lock.json ./web/
+# NODE_ENV=development on THIS command only, regardless of anything the outer
+# environment sets: several platforms (Coolify included) inject the app's own
+# configured env vars — NODE_ENV=production among them — into every build
+# stage. `npm ci` reads NODE_ENV and silently skips devDependencies under it,
+# and Tailwind v4's PostCSS plugin (@tailwindcss/postcss) lives there — it is
+# required to even parse globals.css, not an optimization `next build` can do
+# without. The failure has no stack trace pointing here: it surfaces two steps
+# later as "Cannot find module '@tailwindcss/postcss'" out of the Next build,
+# which looks like a missing dependency rather than a skipped install.
 RUN --mount=type=cache,target=/root/.npm \
-    cd web && npm ci --no-audit --no-fund
+    cd web && NODE_ENV=development npm ci --no-audit --no-fund
 
 # The build needs the parent checkout present: route handlers import from ../,
 # and next.config.mjs pins turbopack's root relative to web/.
