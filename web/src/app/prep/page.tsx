@@ -3,6 +3,7 @@ import { FileText, Mic, Terminal } from "lucide-react";
 import { readInterviewPrep, readApplications } from "@/lib/career-ops";
 import { instrumentSerif } from "@/lib/fonts";
 import { CopyableCommand } from "@/components/copyable-command";
+import { PrepRunner } from "@/components/prep/prep-runner";
 
 // The Interviews route from the PWA prototype ("loop plans, story bank, gaps").
 //
@@ -46,17 +47,17 @@ export default function PrepPage() {
         ) : (
           <ul className="mt-2.5 divide-y divide-border overflow-hidden rounded-xl border border-border bg-surface">
             {interviewing.map((a) => (
-              <li key={a.n}>
-                <Link
-                  href={`/jobs/${a.n}`}
-                  className="flex min-h-[56px] items-center gap-3 px-4 py-3 transition-colors hover:bg-surface-hover"
-                >
+              <li key={a.n} className="px-4 py-3">
+                <Link href={`/jobs/${a.n}`} className="flex min-h-[36px] items-center gap-3">
                   <div className="min-w-0 flex-1">
                     <div className="truncate text-[13px] font-semibold">{a.company}</div>
                     <div className="truncate text-[11px] text-faint">{a.role}</div>
                   </div>
                   <span className="shrink-0 font-mono text-[11px] text-muted">{a.score}</span>
                 </Link>
+                {/* The real prep mode, streaming — this is what POST
+                    /api/prep/:roleId replaced the CLI handoff with. */}
+                <PrepRunner roleId={a.n} company={a.company} />
               </li>
             ))}
           </ul>
@@ -96,12 +97,12 @@ export default function PrepPage() {
       <section className="mt-7 rounded-xl border border-border bg-surface p-4">
         <div className="flex items-center gap-2">
           <Terminal className="size-4 shrink-0 text-brand" aria-hidden />
-          <h2 className="text-[13px] font-semibold">Generating a plan runs in your CLI</h2>
+          <h2 className="text-[13px] font-semibold">Or run it from your terminal</h2>
         </div>
         <p className="mt-2 text-[11.5px] leading-relaxed text-muted">
-          Building a loop plan, drilling a round and shaping a dictated story are core modes. They have no HTTP route
-          in this app yet, so this surface reads your prep files but does not write them. Run the mode and the
-          documents above update in place.
+          Building a loop plan now runs from here — the button on each role above drives your own CLI and streams the
+          result. These are the same modes from a terminal, plus the ones this surface does not wrap yet: drilling a
+          round and shaping a dictated story.
         </p>
         <div className="mt-3 space-y-2">
           <CopyableCommand command={'claude -p "Run career-ops interview-prep"'} />
