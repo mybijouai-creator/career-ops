@@ -14,3 +14,21 @@ reports/*.md
 *.log
 .DS_Store
 writing-samples
+
+# web/ build artifacts and deps — the image installs and builds these itself,
+# and shipping them in the build context both bloats it and risks a host/container
+# ABI mismatch in node_modules.
+web/node_modules
+web/.next
+web/.next-*
+web/tsconfig.tsbuildinfo
+# User-layer data. These belong on a mounted volume, never baked into an image
+# (see web/DEPLOY.md) — an image carrying someone's CV is a data leak waiting to
+# be pushed to a registry.
+cv.md
+article-digest.md
+voice-dna.md
+data/
+config/profile.yml
+interview-prep/
+documents/

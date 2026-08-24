@@ -1,0 +1,80 @@
+# career-ops web — Coolify / Docker Compose deployment.
+#
+# Distinct from docker-compose.yml, which is the DEVELOPER SANDBOX: that one
+# bind-mounts the sources and runs `tail -f /dev/null`, so it serves nothing.
+# Point Coolify at THIS file.
+#
+#   Coolify → New Resource → Docker Compose → compose file: docker-compose.coolify.yml
+#
+# ⚠️  READ web/DEPLOY.md BEFORE EXPOSING THIS.
+#     The app has NO LOGIN. Its guard (web/src/lib/origin-guard.mjs) answers
+#     loopback only, and putting your domain in CAREER_OPS_WEB_ALLOWED_HOSTS is
+#     exactly what lifts that for your domain — necessarily, or the browser's own
+#     API calls would 403. Identity is therefore the PROXY's job: Cloudflare
+#     Access, Coolify's Basic Auth, or a VPN in front of it. Without one, the URL
+#     is the only thing protecting a CV, a job pipeline, and an endpoint that
+#     spends API tokens.
+
+services:
+  web:
+    build:
+      # The repo ROOT, not web/ — the app spawns the core's scripts, so the
+      # image needs the whole checkout.
+      context: .
+      dockerfile: web/Dockerfile
+    image: career-ops-web:latest
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - HOSTNAME=0.0.0.0
+      # The career-ops root inside the container: the volume below. Changing this
+      # means moving the volume mount to match.
+      - CAREER_OPS_ROOT=/app
+
+      # ── REQUIRED ───────────────────────────────────────────────────────────
+      # Your domain, comma or space separated. Without it every /api call from a
+      # browser returns 403: pages render, nothing loads, and the app looks
+      # broken rather than refusing clearly. Set it in Coolify's env UI.
+      - CAREER_OPS_WEB_ALLOWED_HOSTS=${CAREER_OPS_WEB_ALLOWED_HOSTS:?set to your domain, e.g. careerops.example.com}
+
+      # Coolify reads this to route its proxy and issue the TLS certificate.
+      # Use the SAME host as CAREER_OPS_WEB_ALLOWED_HOSTS.
+      - SERVICE_FQDN_WEB_3000=${SERVICE_FQDN_WEB_3000:-}
+
+      # ── Agent CLI ──────────────────────────────────────────────────────────
+      # The image ships the Claude Code CLI. Evaluations, CV tailoring and the
+      # agent console spawn it. With no key those return an error and every
+      # read-only surface (Today, Pipeline, Analytics, reports, the offline
+      # layer) still works.
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      # Optional: the repo's alternative eval paths.
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
+
+    # Headless Chromium crashes on Docker's default 64M /dev/shm during a PDF
+    # render — same reason the dev compose file raises it.
+    shm_size: "1gb"
+    expose:
+      - "3000"
+
+    volumes:
+      # ONE volume for the whole career-ops root. Files are the database here —
+      # data/applications.md IS the tracker — so this is what must survive a
+      # redeploy. The entrypoint seeds it from the image and then refreshes only
+      # the system layer, leaving cv.md, data/, reports/ and config/ alone.
+      # A per-directory mount set was the obvious alternative and is worse: it
+      # cannot cover single files like cv.md, and a bind mount of a not-yet-
+      # existing file gets created by Docker as a directory.
+      - career-ops-root:/app
+
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:3000/api/version"]
+      interval: 30s
+      timeout: 5s
+      start_period: 40s
+      retries: 3
+
+volumes:
+  career-ops-root:
