@@ -19,6 +19,8 @@ import { FirstScoreView } from "@/components/explore/first-score-view";
 import { BetaBanner } from "@/components/beta/beta-banner";
 import { WorkerPills } from "@/components/jobs/worker-pills";
 import { UsageMeter } from "@/components/usage-meter";
+import { OnboardingIntro } from "@/components/onboarding/onboarding-intro";
+import { BuiltByFooter } from "@/components/onboarding/built-by-footer";
 import { instrumentSerif } from "@/lib/fonts";
 import { NAV_ITEMS, isActivePath } from "@/lib/nav-items";
 
@@ -79,6 +81,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <span className={`${instrumentSerif.className} text-sm text-faint`}>local-first · v0</span>
               <ThemeToggle />
             </div>
+            <BuiltByFooter />
           </div>
         </aside>
         {/* co-mobile-main reserves the fixed tab bar's height (+ home-bar inset)
@@ -87,6 +90,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <AssistantConsole />
         <FirstScoreView />
         <BetaBanner />
+        <OnboardingIntro />
       </div>
       </ExploreProvider>
       </ApplyProvider>

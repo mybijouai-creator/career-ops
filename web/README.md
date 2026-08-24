@@ -9,6 +9,31 @@ database, no server. If you never run it, nothing about your CLI workflow change
 > [Discussion #1142](https://github.com/santifer/career-ops/discussions/1142) ·
 > roadmap context → [Discussion #156](https://github.com/santifer/career-ops/discussions/156).
 
+## Credits & this deployment
+
+career-ops itself — the evaluation pipeline, the scoring model, and every mode
+under `modes/` — is [santifer](https://github.com/santifer)'s work, MIT-licensed
+at [santifer/career-ops](https://github.com/santifer/career-ops). None of that
+changes here.
+
+The **installable PWA in this directory** — the offline-capable app shell,
+mobile tab bar, install prompt, the SSE agent-run console and approval-gate
+protocol, background workers, Web Push, and the production Docker/Coolify
+deployment pipeline — was built on top of that engine by **W3JDEV** of **W3J
+LLC** ([github.com/W3JDev](https://github.com/W3JDev) ·
+[w3jdev.com](https://w3jdev.com)). The app's own onboarding tour and
+[`/about`](src/app/about/page.tsx) page carry the same credits, including a
+build-timeline comparison sourced from git history, not estimates.
+
+career-ops is MIT-licensed, which already permits reuse, modification, and
+resale with attribution — this section doesn't change that, and nothing here
+overrides the [root license](../LICENSE) or the project's [Trademark
+Policy](../TRADEMARK.md). For the additions in *this directory* specifically:
+please keep the credit above intact if you redistribute or deploy this PWA
+layer, and if you're planning to resell a deployment built from it
+commercially, a heads-up first (not a requirement) is appreciated —
+[w3jdev.com](https://w3jdev.com).
+
 ## Quick start
 
 Requires Node 22+ (see [Tests](#tests) — `npm test`'s glob discovery needs it).

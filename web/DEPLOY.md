@@ -148,3 +148,16 @@ The image installs `@anthropic-ai/claude-code`, and `src/lib/clis.ts` finds any
 supported CLI by walking `PATH`. To swap or add one, edit that `npm install -g`
 line in the runtime stage of `web/Dockerfile`. Supported ids: `claude`, `codex`,
 `gemini`, `opencode`, `copilot`, `qwen`, `antigravity`, `grok`.
+
+## Optional: linking your LinkedIn on the /about page
+
+The `/about` credits page pulls real, public GitHub profile data automatically.
+It omits the LinkedIn row unless you set one explicitly — nothing here
+fabricates a link:
+
+```bash
+NEXT_PUBLIC_CREDITS_LINKEDIN_URL=https://linkedin.com/in/yourhandle
+```
+
+See [Credits & this deployment](README.md#credits--this-deployment) above for
+who built this deployment layer and the terms that apply to it.

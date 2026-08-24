@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { Send, GraduationCap, FileText, Radar, Cpu, ChevronRight } from "lucide-react";
+import { Send, GraduationCap, FileText, Radar, Cpu, ChevronRight, Info } from "lucide-react";
 import type { ComponentType, SVGProps } from "react";
 import { usePwa } from "@/components/pwa/pwa-provider";
 import { useToast } from "@/components/mobile/toast";
@@ -35,6 +35,7 @@ const MORE: Dest[] = [
   { href: "/cv", label: "CV", note: "cv.md is the source of truth", icon: FileText },
   { href: "/portals", label: "Portals", note: "scan targets · zero tokens", icon: Radar },
   { href: "/jobs", label: "Workers", note: "run history and live jobs", icon: Cpu },
+  { href: "/about", label: "Credits & story", note: "who built what, and when", icon: Info },
 ];
 
 export function MobileSettingsExtras() {
