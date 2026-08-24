@@ -1,4 +1,5 @@
 import { openSession } from "@/lib/apply/session";
+import { withTenantHandler } from "@/lib/auth/with-tenant.mjs";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -8,7 +9,7 @@ export const maxDuration = 300; // the agentic drive + interpretation fallbacks 
 // form, we extract + tag its fields. The session stays open for fill + handoff.
 // cliId enables the agentic fallback (the AI interprets the live form) when
 // deterministic extraction is low-confidence.
-export async function POST(req: Request) {
+export const POST = withTenantHandler(async (req: Request) => {
   let body: { url?: string; cliId?: string; agent?: boolean; _noApplyBtn?: boolean };
   try {
     body = await req.json();
@@ -23,4 +24,4 @@ export async function POST(req: Request) {
   } catch (e) {
     return Response.json({ error: e instanceof Error ? e.message.slice(0, 200) : "could not open the form" }, { status: 500 });
   }
-}
+});

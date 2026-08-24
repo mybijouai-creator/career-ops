@@ -1,6 +1,7 @@
 import { execFile } from "node:child_process";
 import fs from "node:fs";
 import { careerOpsRoot, rootScript } from "@/lib/career-ops";
+import { withTenantHandler } from "@/lib/auth/with-tenant.mjs";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -8,7 +9,7 @@ export const dynamic = "force-dynamic";
 // Orchestrates the core's own cold-start check (doctor.mjs --json) — the SAME
 // source of truth the CLI uses to decide onboarding. We never reimplement the
 // prerequisite list; we read the core's verdict.
-export async function GET() {
+export const GET = withTenantHandler(async () => {
   const root = careerOpsRoot();
   const doctor = rootScript("doctor");
   if (!fs.existsSync(doctor)) {
@@ -24,4 +25,4 @@ export async function GET() {
   } catch {
     return Response.json({ available: false, onboardingNeeded: false, missing: [], warnings: [] });
   }
-}
+});

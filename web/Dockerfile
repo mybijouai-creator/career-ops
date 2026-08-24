@@ -132,7 +132,8 @@ COPY --from=builder --chown=node:node /build/web/.next/standalone/ ./web/
 COPY --from=builder --chown=node:node /build/web/.next/static ./web/.next/static
 
 COPY --chown=node:node web/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
-RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+COPY --chown=node:node web/docker-seed-root.sh /usr/local/bin/docker-seed-root.sh
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh /usr/local/bin/docker-seed-root.sh
 
 # The volume's mount point, pre-created and owned so a fresh named volume is
 # writable by `node` with no runtime chown.

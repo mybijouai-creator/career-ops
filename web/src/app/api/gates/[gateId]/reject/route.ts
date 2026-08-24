@@ -1,4 +1,5 @@
 import { rejectGate } from "@/lib/gates/store";
+import { withTenantHandler } from "@/lib/auth/with-tenant.mjs";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -11,7 +12,7 @@ export const dynamic = "force-dynamic";
  * refusal — a discarded gate is as much a compliance fact as an approved one,
  * and the approve/edit/discard mix is one of the §8 KPIs.
  */
-export async function POST(req: Request, ctx: { params: Promise<{ gateId: string }> }) {
+export const POST = withTenantHandler(async (req: Request, ctx: { params: Promise<{ gateId: string }> }) => {
   const { gateId } = await ctx.params;
   let body: { token?: unknown; note?: unknown } = {};
   try {
@@ -25,4 +26,4 @@ export async function POST(req: Request, ctx: { params: Promise<{ gateId: string
   const result = await rejectGate(gateId, token, note);
   if (!result.ok) return Response.json({ error: result.reason }, { status: result.status });
   return Response.json({ ok: true });
-}
+});

@@ -2,6 +2,7 @@ import { WORKERS, capFromEnv, isDue } from "@/lib/workers/core.mjs";
 import { getSpend, readState } from "@/lib/workers/state";
 import { runWorker } from "@/lib/workers/run";
 import { ensureScheduler, schedulerEnabled } from "@/lib/workers/scheduler";
+import { withTenantHandler } from "@/lib/auth/with-tenant.mjs";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -15,7 +16,7 @@ export const maxDuration = 800;
  * mean `next build` runs the user's scan on a build machine, so it is deferred
  * to the first real request that cares about workers.
  */
-export async function GET() {
+export const GET = withTenantHandler(async () => {
   ensureScheduler();
   const state = readState();
   const spend = getSpend();
@@ -33,9 +34,9 @@ export async function GET() {
       due: isDue(w, state.workers[w.id]),
     })),
   });
-}
+});
 
-export async function POST(req: Request) {
+export const POST = withTenantHandler(async (req: Request) => {
   let body: { id?: unknown };
   try {
     body = await req.json();
@@ -48,4 +49,4 @@ export async function POST(req: Request) {
   // A refusal (already running, or the ceiling reached) is a 409, not a 500:
   // nothing is broken, the request simply cannot be honoured right now.
   return Response.json(result, { status: result.ok ? 200 : 409 });
-}
+});

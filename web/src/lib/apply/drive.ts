@@ -4,6 +4,7 @@ import { resolveCli } from "@/lib/clis";
 import { careerOpsRoot } from "@/lib/career-ops";
 import { dropNewTabs } from "./diagnose";
 import type { DriveStep } from "./issue";
+import { spawnEnv } from "@/lib/auth/spawn-env.mjs";
 
 export type { DriveStep };
 
@@ -59,7 +60,7 @@ function plannerTurn(binPath: string, prompt: string, resumeId: string | null): 
   const base = resumeId ? ["-p", "--resume", resumeId, prompt] : ["-p", prompt];
   const args = [...base, "--output-format", "json", "--strict-mcp-config", "--disallowedTools", "Bash,Read,Write,Edit,NotebookEdit,Task,WebFetch,WebSearch,Glob,Grep"];
   return new Promise((resolve) => {
-    const child = spawnHeadlessCli(binPath, args, { cwd: careerOpsRoot(), env: process.env });
+    const child = spawnHeadlessCli(binPath, args, { cwd: careerOpsRoot(), env: spawnEnv() });
     let buf = "";
     child.stdout.on("data", (d: Buffer) => (buf += d.toString()));
     child.stderr.on("data", () => {});

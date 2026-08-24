@@ -70,6 +70,10 @@ config/vapid.json
 # and (unlike everything else in this section) is not even "your" data —
 # it's every account on this deployment. See DATA_CONTRACT.md.
 /_accounts.db*
+# Per-tenant filesystem roots (web/src/lib/auth/tenant-provision.mjs) — each
+# signed-up user's own cv.md/tracker/reports/etc., one full tree per user id.
+# Never committed: real per-user data, per-deployment. See DATA_CONTRACT.md.
+/tenants/
 # Fork-local path declarations — this checkout's own files, read by
 # update-system.mjs. Gitignored on purpose: it describes THIS clone, not the
 # project, and must survive the sync that overwrites update-system.mjs (#2421).

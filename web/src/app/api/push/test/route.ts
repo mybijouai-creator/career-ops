@@ -1,4 +1,5 @@
 import { sendPush } from "@/lib/push/send";
+import { withTenantHandler } from "@/lib/auth/with-tenant.mjs";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -14,7 +15,7 @@ export const dynamic = "force-dynamic";
  * Fixed `worker_done` kind and fixed copy — this cannot be used to send
  * arbitrary text to the user's lock screen.
  */
-export async function POST() {
+export const POST = withTenantHandler(async () => {
   const result = await sendPush({
     kind: "worker_done",
     title: "career-ops notifications are working",
@@ -22,4 +23,4 @@ export async function POST() {
     tag: "push-test",
   });
   return Response.json(result);
-}
+});

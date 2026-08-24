@@ -5,6 +5,7 @@ import * as yaml from "js-yaml";
 import { careerOpsRoot, rootScript } from "@/lib/career-ops";
 import { atomicWriteWithBackup } from "@/lib/core/safe-write";
 import { PROFILE_CADENCE_KEYS, type ProfileCadenceKey } from "@/lib/followups";
+import { withTenantHandler } from "@/lib/auth/with-tenant.mjs";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -66,7 +67,7 @@ async function readCoreDefaults(): Promise<Partial<Record<ProfileCadenceKey, num
   }
 }
 
-export async function GET() {
+export const GET = withTenantHandler(async () => {
   const file = path.join(careerOpsRoot(), "config", "profile.yml");
   const overrides: Partial<Record<ProfileCadenceKey, number>> = {};
   if (fs.existsSync(file)) {
@@ -88,9 +89,9 @@ export async function GET() {
   // unknown rather than inventing a number — an honest gap beats a stale copy.
   const effective = { ...(defaults ?? {}), ...overrides };
   return Response.json({ defaults: defaults ?? {}, defaultsAvailable: defaults !== null, overrides, effective });
-}
+});
 
-export async function POST(req: Request) {
+export const POST = withTenantHandler(async (req: Request) => {
   let body: Record<string, unknown>;
   try {
     body = (await req.json()) as Record<string, unknown>;
@@ -142,4 +143,4 @@ export async function POST(req: Request) {
     return Response.json({ error: e instanceof Error ? e.message : "write failed" }, { status: 500 });
   }
   return Response.json({ ok: true, followup_cadence: merged.followup_cadence });
-}
+});

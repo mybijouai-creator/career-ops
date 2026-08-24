@@ -2,6 +2,7 @@ import { execFile } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { careerOpsRoot, rootScript } from "@/lib/career-ops";
+import { withTenantHandler } from "@/lib/auth/with-tenant.mjs";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -18,7 +19,7 @@ const STATUS: Record<string, "live" | "empty" | "broken" | "skipped"> = {
   "➖": "skipped",
 };
 
-export async function GET() {
+export const GET = withTenantHandler(async () => {
   const root = careerOpsRoot();
   const verifyPortals = rootScript("verify-portals");
   if (!fs.existsSync(verifyPortals)) {
@@ -43,4 +44,4 @@ export async function GET() {
     if (m) companies.push({ name: m[2].trim(), status: STATUS[m[1]] ?? "unknown", detail: m[3].trim() });
   }
   return Response.json({ available: true, configured: true, companies });
-}
+});

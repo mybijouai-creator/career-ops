@@ -1,17 +1,18 @@
 import { NextResponse } from "next/server";
 import { readMemory, rememberFact } from "@/lib/career-ops";
+import { withTenantHandler } from "@/lib/auth/with-tenant.mjs";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export const GET = withTenantHandler(async () => {
   return NextResponse.json({ memory: readMemory() });
-}
+});
 
 // Append a durable fact the assistant learned about the user. Written to the
 // CANONICAL modes/_profile.md (single source of truth) so the CLI/TUI see it too
 // — never a web-only memory store.
-export async function POST(req: Request) {
+export const POST = withTenantHandler(async (req: Request) => {
   let b: { fact?: string };
   try {
     b = await req.json();
@@ -24,4 +25,4 @@ export async function POST(req: Request) {
   const result = rememberFact(fact);
   if (result === "error") return NextResponse.json({ error: "write failed" }, { status: 500 });
   return NextResponse.json({ ok: true, deduped: result === "deduped" });
-}
+});

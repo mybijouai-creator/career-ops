@@ -3,6 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { careerOpsRoot } from "@/lib/career-ops";
 import { atomicWriteWithBackup } from "@/lib/core/safe-write";
+import { withTenantHandler } from "@/lib/auth/with-tenant.mjs";
 
 function cvPath() {
   return path.join(careerOpsRoot(), "cv.md");
@@ -10,15 +11,15 @@ function cvPath() {
 
 const MAX_CV_BYTES = 200_000;
 
-export async function GET() {
+export const GET = withTenantHandler(async () => {
   try {
     return NextResponse.json({ content: fs.readFileSync(cvPath(), "utf8"), exists: true });
   } catch {
     return NextResponse.json({ content: "", exists: false });
   }
-}
+});
 
-export async function POST(req: Request) {
+export const POST = withTenantHandler(async (req: Request) => {
   let body: { content?: string };
   try {
     body = await req.json();
@@ -39,4 +40,4 @@ export async function POST(req: Request) {
   } catch {
     return NextResponse.json({ error: "write failed" }, { status: 500 });
   }
-}
+});

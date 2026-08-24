@@ -5,6 +5,8 @@ import path from "node:path";
 import { resolveCli } from "@/lib/clis";
 import { careerOpsRoot, readMemory } from "@/lib/career-ops";
 import { assembleDedupContext } from "@/lib/core/discover";
+import { withTenantHandler } from "@/lib/auth/with-tenant.mjs";
+import { spawnEnv } from "@/lib/auth/spawn-env.mjs";
 
 // AI search orchestrates modes/discover.md by running the USER'S configured CLI
 // headless (CLI-agnostic, like the assistant). Web hunting is slow → generous
@@ -130,7 +132,7 @@ Follow modes/discover.md exactly. You are running headless for the web:
 - DEDUP: skip anything already known below; don't re-propose the user's existing companies.
 `;
 
-export async function POST(req: Request) {
+export const POST = withTenantHandler(async (req: Request) => {
   let body: { query?: string; cliId?: string };
   try {
     body = await req.json();
@@ -242,7 +244,7 @@ export async function POST(req: Request) {
 
   const child = spawnHeadlessCli(binPath, args, {
     cwd: childCwd,
-    env: process.env,
+    env: spawnEnv(),
     detached: useCodexProcessGroup,
   });
 
@@ -487,4 +489,4 @@ export async function POST(req: Request) {
       "X-Accel-Buffering": "no",
     },
   });
-}
+});

@@ -1,6 +1,7 @@
 import { spawn } from "node:child_process";
 import { careerOpsRoot, rootScript, trackerCanDelete } from "@/lib/career-ops";
 import { isTrackerWriting } from "@/lib/core/run-registry";
+import { withTenantHandler } from "@/lib/auth/with-tenant.mjs";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -23,7 +24,7 @@ function parseOrphan(stderr: string): string | null {
   return m ? m[1].trim() : null;
 }
 
-export async function POST(req: Request) {
+export const POST = withTenantHandler(async (req: Request) => {
   let body: { n?: string | number; dryRun?: boolean };
   try {
     body = await req.json();
@@ -102,4 +103,4 @@ export async function POST(req: Request) {
   } finally {
     if (!dryRun) deleting = false;
   }
-}
+});

@@ -1,6 +1,8 @@
 import { spawnHeadlessCli } from "@/lib/spawn-cli.mjs";
 import { resolveCli } from "@/lib/clis";
 import { careerOpsRoot, readMemory, doctorState } from "@/lib/career-ops";
+import { withTenantHandler } from "@/lib/auth/with-tenant.mjs";
+import { spawnEnv } from "@/lib/auth/spawn-env.mjs";
 
 export const runtime = "nodejs"; // child_process (spawn) requires the Node runtime
 export const dynamic = "force-dynamic";
@@ -44,7 +46,7 @@ Keep replies short, warm, and useful. Don't dump raw files or narrate internal d
 
 type Msg = { role: "user" | "assistant"; content: string };
 
-export async function POST(req: Request) {
+export const POST = withTenantHandler(async (req: Request) => {
   let body: { message?: string; cliId?: string; history?: Msg[]; pageContext?: string };
   try {
     body = await req.json();
@@ -109,7 +111,7 @@ export async function POST(req: Request) {
       ]
     : spec.args(prompt);
 
-  const child = spawnHeadlessCli(binPath, args, { cwd: careerOpsRoot(), env: process.env });
+  const child = spawnHeadlessCli(binPath, args, { cwd: careerOpsRoot(), env: spawnEnv() });
 
   const encoder = new TextEncoder();
   // `closed` + kill timer in the OUTER scope so cancel() can flip `closed` before
@@ -212,4 +214,4 @@ export async function POST(req: Request) {
       "X-Accel-Buffering": "no",
     },
   });
-}
+});

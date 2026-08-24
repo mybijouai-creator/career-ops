@@ -3,6 +3,7 @@ import path from "node:path";
 import { atomicWrite } from "@/lib/core/safe-write";
 import { CHANNELS, isRealISODate, localISODate } from "@/lib/followups";
 import { followupsLogPath, withFollowupsWrite, followupsWriteError } from "@/lib/followups-server";
+import { withTenantHandler } from "@/lib/auth/with-tenant.mjs";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -26,7 +27,7 @@ function cell(v: unknown, max?: number): string {
 
 const TABLE_HEADER = "| num | appNum | date | company | role | channel | contact | notes |\n|---|---|---|---|---|---|---|---|\n";
 
-export async function POST(req: Request) {
+export const POST = withTenantHandler(async (req: Request) => {
   let body: {
     appNum?: string | number;
     num?: string | number; // legacy alias for appNum (old home-card payload)
@@ -102,13 +103,13 @@ export async function POST(req: Request) {
   } catch (e) {
     return followupsWriteError(e, "write failed");
   }
-}
+});
 
 // Remove ONE logged follow-up by its `num` (mistake correction — user-initiated
 // from the history panel). Only the matching table row is dropped; every other
 // byte of the file (header, other rows, legacy bullets) is preserved. Legacy
 // bullets carry no num and cannot be deleted here.
-export async function DELETE(req: Request) {
+export const DELETE = withTenantHandler(async (req: Request) => {
   let body: { num?: string | number };
   try {
     body = (await req.json()) as { num?: string | number };
@@ -136,4 +137,4 @@ export async function DELETE(req: Request) {
   } catch (e) {
     return followupsWriteError(e, "delete failed");
   }
-}
+});

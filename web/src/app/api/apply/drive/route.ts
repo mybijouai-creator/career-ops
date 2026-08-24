@@ -1,6 +1,7 @@
 import { getSession, finalizeDrivenSession, extractCurrent, isApplicationFormFn, handoffSession } from "@/lib/apply/session";
 import { driveSession } from "@/lib/apply/drive";
 import { classifyEmpty } from "@/lib/apply/diagnose";
+import { withTenantHandler } from "@/lib/auth/with-tenant.mjs";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -9,7 +10,7 @@ export const maxDuration = 300;
 // Streamed agentic drive over an OPEN session: the AI drives the headed page to
 // REACH a fillable application form (the user watches each step live), then we
 // extract + finalize. NEVER submits (enforced in driveSession).
-export async function POST(req: Request) {
+export const POST = withTenantHandler(async (req: Request) => {
   let body: { sessionId?: string; cliId?: string; goal?: "reach" | "full"; answers?: { label: string; value: string }[] };
   try {
     body = await req.json();
@@ -70,4 +71,4 @@ export async function POST(req: Request) {
     },
   });
   return new Response(stream, { headers: { "Content-Type": "application/x-ndjson", "Cache-Control": "no-store" } });
-}
+});

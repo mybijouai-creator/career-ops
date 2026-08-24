@@ -1,5 +1,6 @@
 import { classify } from "@/lib/runs/router.mjs";
 import { createRun } from "@/lib/runs/store";
+import { withTenantHandler } from "@/lib/auth/with-tenant.mjs";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -24,7 +25,7 @@ export const dynamic = "force-dynamic";
 
 const MAX_TEXT = 20_000;
 
-export async function POST(req: Request) {
+export const POST = withTenantHandler(async (req: Request) => {
   let body: { text?: unknown; attachments?: unknown };
   try {
     body = await req.json();
@@ -61,4 +62,4 @@ export async function POST(req: Request) {
     // invented label on the plan card, so the field is omitted until `oferta`
     // produces a real one.
   });
-}
+});

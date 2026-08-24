@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import fs from "node:fs";
 import path from "node:path";
 import { careerOpsRoot } from "@/lib/career-ops";
+import { withTenantHandler } from "@/lib/auth/with-tenant.mjs";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -9,7 +10,7 @@ export const dynamic = "force-dynamic";
 // Serve the tailored CV PDF the pdf mode wrote to output/cv-…-{company}-…pdf for
 // a given offer (matched by company slug, newest first). Inline so it opens in
 // the browser. Local-first: reads the user's own output/ dir.
-export async function GET(req: NextRequest) {
+export const GET = withTenantHandler(async (req: NextRequest) => {
   const company = (req.nextUrl.searchParams.get("company") ?? "").trim();
   if (!company) return new Response("company required", { status: 400 });
   // Token-extract instead of replace-then-trim: same slug, and no `-+$`-style
@@ -42,4 +43,4 @@ export async function GET(req: NextRequest) {
   } catch {
     return new Response("could not read the PDF", { status: 500 });
   }
-}
+});

@@ -15,12 +15,14 @@ import { createCvEnvelopeFilter, type CvEnvelope } from "@/lib/cv-envelope.mjs";
 import { buildPrompt, isShellSafeCompanyName } from "@/lib/run-prompts.mjs";
 import { claudeCliArgs } from "@/lib/claude-invocation.mjs";
 import { acquireTrackerWrite, releaseTrackerWrite } from "@/lib/core/run-registry";
+import { withTenantHandler } from "@/lib/auth/with-tenant.mjs";
+import { spawnEnv } from "@/lib/auth/spawn-env.mjs";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 800; // a real oferta evaluation / pdf-mode CV tailoring + render is heavy and multi-step
 
-export async function POST(req: Request) {
+export const POST = withTenantHandler(async (req: Request) => {
   let body: { kind?: string; input?: string; cliId?: string };
   try {
     body = await req.json();
@@ -147,7 +149,7 @@ export async function POST(req: Request) {
   // every CLI-invoking route (assistant, explore/ai, cv/ingest, the apply planners),
   // which had the identical bug, and puts it behind one tested helper so it cannot
   // drift back in on any single call site.
-  const child = spawnHeadlessCli(binPath, args, { cwd: careerOpsRoot(), env: process.env });
+  const child = spawnHeadlessCli(binPath, args, { cwd: careerOpsRoot(), env: spawnEnv() });
   // Decode once on the stream, not per chunk. Buffer#toString() decodes each chunk
   // independently, so a chunk boundary falling inside a multi-byte UTF-8 sequence
   // yields a replacement character and mis-decodes the bytes after it. Those bytes
@@ -480,4 +482,4 @@ export async function POST(req: Request) {
       "X-Accel-Buffering": "no",
     },
   });
-}
+});

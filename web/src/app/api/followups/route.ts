@@ -1,6 +1,7 @@
 import { execFile } from "node:child_process";
 import fs from "node:fs";
 import { careerOpsRoot, rootScript } from "@/lib/career-ops";
+import { withTenantHandler } from "@/lib/auth/with-tenant.mjs";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -10,7 +11,7 @@ export const dynamic = "force-dynamic";
 // reimplement the cadence logic, we read its verdict (mirrors /api/doctor).
 // Default: capped list for the home card. `?full=1`: the complete cadence
 // (entries + metadata + cadenceConfig) for the /followups tracker page.
-export async function GET(req: Request) {
+export const GET = withTenantHandler(async (req: Request) => {
   const full = new URL(req.url).searchParams.get("full") === "1";
   const script = rootScript("followup-cadence");
   if (!fs.existsSync(script)) return Response.json({ available: false, metadata: null, entries: [] });
@@ -38,4 +39,4 @@ export async function GET(req: Request) {
   } catch {
     return Response.json({ available: false, metadata: null, entries: [] });
   }
-}
+});

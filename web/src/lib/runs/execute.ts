@@ -4,6 +4,7 @@ import { accumulateTokens } from "@/lib/run-cli-support.mjs";
 import { spawnHeadlessCli } from "@/lib/spawn-cli.mjs";
 import { claudeCliArgs } from "@/lib/claude-invocation.mjs";
 import { emit } from "@/lib/runs/store";
+import { spawnEnv } from "@/lib/auth/spawn-env.mjs";
 
 /**
  * execute.ts — run one step of a plan through the user's own agent CLI, reporting
@@ -68,7 +69,7 @@ export async function executeStep(args: {
   return await new Promise<StepResult>((resolve) => {
     let child;
     try {
-      child = spawnHeadlessCli(binPath, argv, { cwd: careerOpsRoot(), env: process.env });
+      child = spawnHeadlessCli(binPath, argv, { cwd: careerOpsRoot(), env: spawnEnv() });
     } catch (e) {
       const error = e instanceof Error ? e.message : "could not start the CLI";
       emit(runId, { type: "step", i, state: "failed", label, ms: Date.now() - started, costUsd: 0 });

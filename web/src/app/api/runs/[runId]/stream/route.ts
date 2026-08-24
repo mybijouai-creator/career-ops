@@ -1,5 +1,6 @@
 import { encodeEvent } from "@/lib/runs/events.mjs";
 import { getRun, isFinished, subscribe } from "@/lib/runs/store";
+import { withTenantHandler } from "@/lib/auth/with-tenant.mjs";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -21,7 +22,7 @@ export const maxDuration = 800;
  * Only `gate` blocks. Everything else is advisory — the console renders it and
  * the run continues.
  */
-export async function GET(_req: Request, ctx: { params: Promise<{ runId: string }> }) {
+export const GET = withTenantHandler(async (_req: Request, ctx: { params: Promise<{ runId: string }> }) => {
   const { runId } = await ctx.params;
   const run = getRun(runId);
 
@@ -91,4 +92,4 @@ export async function GET(_req: Request, ctx: { params: Promise<{ runId: string 
       "X-Accel-Buffering": "no",
     },
   });
-}
+});

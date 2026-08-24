@@ -163,10 +163,26 @@ CAREER_OPS_ENCRYPTION_KEY=$(node -e "console.log(require('crypto').randomBytes(3
 ```
 
 Generate it once and keep it — rotating it makes every already-stored API key
-undecryptable (the same tradeoff as the VAPID keypair above). Signing up does
-**not** yet give a user their own isolated `cv.md`/tracker/reports; that's
-tracked separately (per-tenant filesystem isolation) and until it lands,
-accounts + encrypted keys exist without yet changing who can see what data.
+undecryptable (the same tradeoff as the VAPID keypair above).
+
+Signing up now DOES give a user their own isolated `cv.md`/tracker/reports —
+every request from a signed-in user runs against `tenants/{userId}/` under the
+volume root (seeded from the same system-layer files the default `/app` root
+gets at boot), while requests with no valid session keep reading/writing the
+original single-tenant shared root exactly as before this feature existed.
+This is enforced ambiently (`AsyncLocalStorage`), not per-route, so it covers
+every route that touches career-ops data — including CLI child processes
+spawned on a request's behalf, which inherit the same resolved root and the
+signed-in user's own decrypted API key as environment variables.
+
+**Known gap — background workers are not yet per-tenant.** The scan/batch-eval/
+liveness workers (`/api/workers`, `src/lib/workers/scheduler.ts`) run on a
+process-wide timer outside any request's `AsyncLocalStorage` context, so they
+always operate against the single shared/default root regardless of how many
+tenants have signed up. A multi-tenant deployment should treat automatic
+background scanning as a single-tenant-only feature until this is addressed;
+each tenant can still trigger their own on-demand work through the normal
+request-scoped routes, which are fully isolated.
 
 ## Optional: linking your LinkedIn on the /about page
 
