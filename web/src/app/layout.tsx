@@ -9,6 +9,17 @@ export const metadata: Metadata = {
   // Home-screen / standalone (iOS): let our theme-color flow up to the status bar
   // + Dynamic Island; safe-area insets handle the layout.
   appleWebApp: { capable: true, statusBarStyle: "black-translucent", title: "career-ops" },
+  // Installable app. The manifest itself is app/manifest.ts; this is the <link>
+  // that lets the browser find it and offer an install.
+  manifest: "/manifest.webmanifest",
+  icons: {
+    // app/icon.svg still supplies the favicon; these are the install/home-screen
+    // glyphs. iOS ignores the manifest for the home-screen icon, so
+    // apple-touch-icon has to be declared separately or the installed app gets a
+    // screenshot of the page instead of the mark.
+    icon: [{ url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" }],
+    apple: [{ url: "/apple-touch-icon.png", sizes: "192x192", type: "image/png" }],
+  },
 };
 
 export const viewport: Viewport = {

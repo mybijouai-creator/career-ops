@@ -90,7 +90,12 @@ export function BetaBanner() {
 
   return (
     <>
-      <div className="fixed bottom-3 left-3 z-[70] flex items-center gap-2 rounded-full border border-brand/30 bg-surface/90 px-3 py-1.5 text-xs shadow-lg backdrop-blur-md">
+      {/* bottom-[84px] clears the mobile tab bar (same offset the toast uses);
+          md:bottom-3 restores the original corner position on desktop, which has
+          no tab bar to collide with. Without this the pill sat at z-[70] — above
+          the tab bar's z-40 — directly over the leftmost tab and silently ate
+          every tap on it. */}
+      <div className="fixed bottom-[84px] left-3 z-[70] flex items-center gap-2 rounded-full border border-brand/30 bg-surface/90 px-3 py-1.5 text-xs shadow-lg backdrop-blur-md md:bottom-3">
         <span className="flex items-center gap-1.5 font-medium text-brand-text">
           <span className="size-1.5 animate-pulse rounded-full bg-brand" /> {meta.version} · {meta.channel}
         </span>

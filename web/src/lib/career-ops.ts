@@ -156,6 +156,78 @@ export function readApplications(): Application[] {
  * plain file-stat (no subprocess). Drives the home branch: first-run (no CV) →
  * the CV takeover; in-between (CV but no profile) → gentle nudges; established.
  */
+/**
+ * The user's interview-prep documents, as they exist on disk.
+ *
+ * `interview-prep/` is USER LAYER (see DATA_CONTRACT.md): the story bank and the
+ * per-company prep notes are the user's own, gitignored, and never written by
+ * this app. This is a read-only listing so the Interviews surface can show what
+ * is actually there instead of inventing a loop plan — the prep GENERATION
+ * modes are CLI-side and have no HTTP route yet.
+ *
+ * Filenames follow `{company}-{role}.md` (AGENTS.md), so the company is the
+ * first dash-separated token; a file that does not follow the convention still
+ * lists, just without a parsed company.
+ */
+export type PrepDoc = {
+  file: string;
+  /** Best-effort company from `{company}-{role}.md`; null when unparseable. */
+  company: string | null;
+  /** Remainder of the filename, humanised. */
+  title: string;
+  bytes: number;
+  modified: string;
+  /** True for the accumulated STAR+R bank rather than a per-company doc. */
+  storyBank: boolean;
+};
+
+export function readInterviewPrep(): { docs: PrepDoc[]; hasDir: boolean; sessions: number } {
+  const dir = path.join(careerOpsRoot(), "interview-prep");
+  let entries: string[];
+  try {
+    entries = fs.readdirSync(dir);
+  } catch {
+    return { docs: [], hasDir: false, sessions: 0 };
+  }
+  const docs: PrepDoc[] = [];
+  for (const name of entries) {
+    if (!name.endsWith(".md")) continue;
+    let stat: fs.Stats;
+    try {
+      stat = fs.statSync(path.join(dir, name));
+    } catch {
+      continue;
+    }
+    if (!stat.isFile()) continue;
+    const stem = name.slice(0, -3);
+    const storyBank = stem === "story-bank";
+    const dash = stem.indexOf("-");
+    docs.push({
+      file: `interview-prep/${name}`,
+      company: storyBank || dash <= 0 ? null : stem.slice(0, dash),
+      title: storyBank ? "Story bank" : humanise(dash > 0 ? stem.slice(dash + 1) : stem),
+      bytes: stat.size,
+      modified: stat.mtime.toISOString().slice(0, 10),
+      storyBank,
+    });
+  }
+  // Story bank first (it is the one document every round draws on), then newest.
+  docs.sort((a, b) => Number(b.storyBank) - Number(a.storyBank) || b.modified.localeCompare(a.modified));
+
+  let sessions = 0;
+  try {
+    sessions = fs.readdirSync(path.join(dir, "sessions")).filter((f) => f.endsWith(".md") && f !== "README.md").length;
+  } catch {
+    /* no sessions/ yet */
+  }
+  return { docs, hasDir: true, sessions };
+}
+
+function humanise(slug: string): string {
+  const words = slug.replace(/[-_]+/g, " ").trim();
+  return words ? words.charAt(0).toUpperCase() + words.slice(1) : slug;
+}
+
 export type LifecyclePhase = "first-run" | "in-between" | "established";
 /**
  * Server-side lifecycle, mirroring the core doctor.mjs prerequisite list with the

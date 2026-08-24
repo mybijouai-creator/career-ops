@@ -58,6 +58,12 @@ writing-samples/*
 config/profile.yml
 config/cv-facts.json
 config/benchmarks.yml
+# Web Push signing keypair (generated once on first use — see DATA_CONTRACT.md).
+# Never committed: it is per-install and its private half must stay secret.
+config/vapid.json
+# Per-run event ledgers (web/src/lib/runs/store.ts) — an audit trail of what a
+# run did and cost, not project source. See DATA_CONTRACT.md.
+/runs/
 # Fork-local path declarations — this checkout's own files, read by
 # update-system.mjs. Gitignored on purpose: it describes THIS clone, not the
 # project, and must survive the sync that overwrites update-system.mjs (#2421).

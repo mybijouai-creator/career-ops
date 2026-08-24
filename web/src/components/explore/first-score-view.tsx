@@ -55,7 +55,7 @@ export function FirstScoreView() {
   );
 
   // A11y for the emotional-peak modal: focus into it on open, trap Tab, Escape to
-  // close, restore focus on close (mirrors the MobileNav pattern).
+  // close, restore focus on close (mirrors the mobile sheet pattern).
   const panelRef = useRef<HTMLDivElement>(null);
   const open = !seen && !dismissed && !!firstDone;
   useEffect(() => {

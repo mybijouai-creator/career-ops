@@ -9,6 +9,31 @@ database, no server. If you never run it, nothing about your CLI workflow change
 > [Discussion #1142](https://github.com/santifer/career-ops/discussions/1142) ·
 > roadmap context → [Discussion #156](https://github.com/santifer/career-ops/discussions/156).
 
+## Credits & this deployment
+
+career-ops itself — the evaluation pipeline, the scoring model, and every mode
+under `modes/` — is [santifer](https://github.com/santifer)'s work, MIT-licensed
+at [santifer/career-ops](https://github.com/santifer/career-ops). None of that
+changes here.
+
+The **installable PWA in this directory** — the offline-capable app shell,
+mobile tab bar, install prompt, the SSE agent-run console and approval-gate
+protocol, background workers, Web Push, and the production Docker/Coolify
+deployment pipeline — was built on top of that engine by **W3JDEV** of **W3J
+LLC** ([github.com/W3JDev](https://github.com/W3JDev) ·
+[w3jdev.com](https://w3jdev.com)). The app's own onboarding tour and
+[`/about`](src/app/about/page.tsx) page carry the same credits, including a
+build-timeline comparison sourced from git history, not estimates.
+
+career-ops is MIT-licensed, which already permits reuse, modification, and
+resale with attribution — this section doesn't change that, and nothing here
+overrides the [root license](../LICENSE) or the project's [Trademark
+Policy](../TRADEMARK.md). For the additions in *this directory* specifically:
+please keep the credit above intact if you redistribute or deploy this PWA
+layer, and if you're planning to resell a deployment built from it
+commercially, a heads-up first (not a requirement) is appreciated —
+[w3jdev.com](https://w3jdev.com).
+
 ## Quick start
 
 Requires Node 22+ (see [Tests](#tests) — `npm test`'s glob discovery needs it).
@@ -32,6 +57,39 @@ Open http://localhost:3000. The app reads the career-ops checkout it lives in
   **it never submits for you** — you always press the button.
 - **Today / Analytics / CV / Config** — action queue, funnel, CV editing with
   preview, settings.
+- **Agent** — the assistant as a route of its own (`/agent`), which on mobile is
+  a tab rather than a bubble floating over whatever you were reading.
+- **Interviews** — reads your own `interview-prep/` documents and the rows
+  currently at Interview. It does not write them: generating a loop plan is a
+  core mode with no HTTP route yet, so the page hands you the invocation
+  instead of showing an invented plan.
+
+## Installable app (PWA)
+
+The web app installs to a phone home screen and stays useful without a network.
+
+- **Launches into the decision queue.** `start_url` is `/`, not a dashboard —
+  the point of the app being on your home screen is that opening it puts a
+  decision in front of you.
+- **Bottom tab bar is the only global nav on mobile** (Today, Explore, Agent,
+  Pipeline, Stats). Secondary surfaces are reached from the surface that owns
+  them and from Settings.
+- **Readable offline.** The service worker precaches the shell, serves the
+  pipeline, reports and PDFs stale-while-revalidate, and treats the spend ledger
+  as network-first with a 24h fallback — a cost figure of unknown age is worse
+  than none. Mutations are never cached.
+- **Writes queue and replay.** A status change or follow-up log made offline is
+  held in IndexedDB with a deterministic idempotency key and replayed through
+  Background Sync when you reconnect. The UI shows it as queued, not saved.
+- **Approvals never replay.** An approval or an irreversible write captured
+  offline is stored as an *intent*, not a queued request. On reconnect you are
+  asked again, and the request is issued against live state — a stale diff must
+  not be able to write files. Settings → Offline & data is where those come
+  back.
+
+The caching rules and the queue's classification live in `public/pwa/*.mjs`,
+shared verbatim between the service worker and the app bundle so the two cannot
+drift, and asserted in `tests/lib/pwa-*.test.mjs`.
 
 ## Safety
 

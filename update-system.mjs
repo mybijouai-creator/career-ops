@@ -355,6 +355,7 @@ const SYSTEM_PATHS = [
   'scaffolder/',
   'Dockerfile',
   'docker-compose.yml',
+  'docker-compose.coolify.yml',
   '.dockerignore',
   'cops',
   'DOCKER.md',

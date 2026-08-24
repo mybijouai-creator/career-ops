@@ -38,6 +38,20 @@ test("a plain object is required: no output, no JSON, and a bare array all read 
   assert.equal(parseCliJson("[1,2,3]\n"), null);
 });
 
+test("a pretty-printed (multi-line) result reads as absent — the contract set-status.mjs must honour", () => {
+  // Regression for a real bug: set-status.mjs's success path once emitted
+  // `JSON.stringify(result, null, 2)`. Its opening "{" sits alone on its own
+  // line, which never parses as a complete object by itself, so the scan ran
+  // past the whole document and found nothing — every successful status
+  // change made through the web UI reported a false 500, even though the
+  // write itself had already committed. set-status.mjs now emits the result
+  // as a single line (matching its own usage-error branch); this test pins
+  // the parser's actual contract so a future pretty-print regression fails
+  // here instead of shipping silently again.
+  const prettyPrinted = JSON.stringify({ changed: true, statusLogged: true }, null, 2);
+  assert.equal(parseCliJson(prettyPrinted), null, "a pretty-printed result must not be mistaken for absent output turning into a false success");
+});
+
 test("a tracker row is the # column, so only digits select one", () => {
   assert.equal(trackerRowArg("42"), "42");
   assert.equal(trackerRowArg(42), "42");

@@ -5,6 +5,11 @@ const nextConfig = {
   // Turbopack's postcss workers into an unbounded respawn loop that exhausts
   // all RAM (vercel/next.js#92978) — pin the root to this app.
   turbopack: { root: import.meta.dirname },
+  // Standalone output for the container image: Next traces exactly the files the
+  // server needs and emits a self-contained bundle, so the runtime image carries
+  // no dev dependencies and no full node_modules tree. Harmless for `next dev`
+  // and for anyone running the app locally from a checkout.
+  output: "standalone",
   // Allow a throwaway build dir (e.g. BUILD_DIST=.next-prod) so a production
   // `next build` can run without clobbering a live `next dev` .next.
   ...(process.env.BUILD_DIST ? { distDir: process.env.BUILD_DIST } : {}),

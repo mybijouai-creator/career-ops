@@ -5,7 +5,11 @@ import { usePathname } from "next/navigation";
 import { cn } from "@/lib/cn";
 import { CoMark } from "@/components/co-mark";
 import { AssistantConsole } from "@/components/assistant-console";
-import { MobileNav } from "@/components/mobile-nav";
+import { MobileChrome } from "@/components/mobile/mobile-chrome";
+import { DecisionCountProvider } from "@/components/mobile/decision-count";
+import { SheetProvider } from "@/components/mobile/sheet";
+import { ToastProvider } from "@/components/mobile/toast";
+import { PwaProvider } from "@/components/pwa/pwa-provider";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { JobsProvider } from "@/components/jobs/job-store";
 import { PipelineProvider } from "@/components/pipeline/pipeline-provider";
@@ -15,17 +19,26 @@ import { FirstScoreView } from "@/components/explore/first-score-view";
 import { BetaBanner } from "@/components/beta/beta-banner";
 import { WorkerPills } from "@/components/jobs/worker-pills";
 import { UsageMeter } from "@/components/usage-meter";
+import { OnboardingIntro } from "@/components/onboarding/onboarding-intro";
+import { BuiltByFooter } from "@/components/onboarding/built-by-footer";
 import { instrumentSerif } from "@/lib/fonts";
 import { NAV_ITEMS, isActivePath } from "@/lib/nav-items";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   return (
-    <JobsProvider>
+    <PwaProvider>
+      <DecisionCountProvider>
+      <ToastProvider>
+      <SheetProvider>
+      <JobsProvider>
       <PipelineProvider>
       <ApplyProvider>
       <ExploreProvider>
-      <MobileNav />
+      {/* Mobile (< md): the prototype's bottom tab bar is the only global nav —
+          it replaces the slide-over drawer entirely. Desktop keeps the sidebar
+          below, unchanged. */}
+      <MobileChrome />
       <div className="flex min-h-screen">
         <aside className="sticky top-0 hidden h-screen w-60 shrink-0 flex-col overflow-y-auto border-r border-border bg-surface/30 p-4 md:flex">
           <Link href="/" className="mb-8 flex items-center gap-2.5 px-1">
@@ -68,16 +81,24 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <span className={`${instrumentSerif.className} text-sm text-faint`}>local-first · v0</span>
               <ThemeToggle />
             </div>
+            <BuiltByFooter />
           </div>
         </aside>
-        <main className="flex-1 overflow-x-hidden">{children}</main>
+        {/* co-mobile-main reserves the fixed tab bar's height (+ home-bar inset)
+            so no page has to remember to pad for it. */}
+        <main className="co-mobile-main flex-1 overflow-x-hidden">{children}</main>
         <AssistantConsole />
         <FirstScoreView />
         <BetaBanner />
+        <OnboardingIntro />
       </div>
       </ExploreProvider>
       </ApplyProvider>
       </PipelineProvider>
-    </JobsProvider>
+      </JobsProvider>
+      </SheetProvider>
+      </ToastProvider>
+      </DecisionCountProvider>
+    </PwaProvider>
   );
 }
