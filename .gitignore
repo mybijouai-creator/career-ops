@@ -64,6 +64,12 @@ config/vapid.json
 # Per-run event ledgers (web/src/lib/runs/store.ts) — an audit trail of what a
 # run did and cost, not project source. See DATA_CONTRACT.md.
 /runs/
+# Multi-tenant accounts store (web/src/lib/auth/db.mjs) — every signed-up
+# user's email/password hash/encrypted API key, plus SQLite's WAL/SHM
+# sidecars. Never committed: it holds real credentials, is per-deployment,
+# and (unlike everything else in this section) is not even "your" data —
+# it's every account on this deployment. See DATA_CONTRACT.md.
+/_accounts.db*
 # Fork-local path declarations — this checkout's own files, read by
 # update-system.mjs. Gitignored on purpose: it describes THIS clone, not the
 # project, and must survive the sync that overwrites update-system.mjs (#2421).

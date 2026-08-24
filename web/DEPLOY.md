@@ -149,6 +149,25 @@ supported CLI by walking `PATH`. To swap or add one, edit that `npm install -g`
 line in the runtime stage of `web/Dockerfile`. Supported ids: `claude`, `codex`,
 `gemini`, `opencode`, `copilot`, `qwen`, `antigravity`, `grok`.
 
+## Optional: multi-tenant accounts (signup/login, per-user API keys)
+
+By default this deployment is the single-tenant model described at the top of
+this doc: one shared `cv.md`/tracker, no login. Setting
+`CAREER_OPS_ENCRYPTION_KEY` turns on `/signup` and `/login` (backed by
+`_accounts.db`, a SQLite file at the volume root — see DATA_CONTRACT.md) and a
+"Your API key" section on `/config` where a signed-in user stores their own
+provider key, encrypted at rest:
+
+```bash
+CAREER_OPS_ENCRYPTION_KEY=$(node -e "console.log(require('crypto').randomBytes(32).toString('hex'))")
+```
+
+Generate it once and keep it — rotating it makes every already-stored API key
+undecryptable (the same tradeoff as the VAPID keypair above). Signing up does
+**not** yet give a user their own isolated `cv.md`/tracker/reports; that's
+tracked separately (per-tenant filesystem isolation) and until it lands,
+accounts + encrypted keys exist without yet changing who can see what data.
+
 ## Optional: linking your LinkedIn on the /about page
 
 The `/about` credits page pulls real, public GitHub profile data automatically.
