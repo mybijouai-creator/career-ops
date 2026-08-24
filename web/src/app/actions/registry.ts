@@ -58,6 +58,10 @@ export type ProfilePatch = {
   currency?: string;
   remote?: string;
   seniority?: string;
+  portfolioUrl?: string;
+  linkedin?: string;
+  github?: string;
+  twitter?: string;
 };
 
 // House-style hand validation (no zod). Keeps only well-formed, confident fields.
@@ -73,6 +77,13 @@ function coerceProfile(raw: Record<string, unknown>): ProfilePatch {
   out.seniority = str(raw.seniority);
   out.compMin = num(raw.compMin);
   out.compMax = num(raw.compMax);
+  // No stricter URL validation than this on purpose — the profile examples
+  // themselves show bare "linkedin.com/in/jane" with no protocol, and cv.md's
+  // own PDF/LaTeX render already treats these as opaque display strings.
+  out.portfolioUrl = str(raw.portfolioUrl);
+  out.linkedin = str(raw.linkedin);
+  out.github = str(raw.github);
+  out.twitter = str(raw.twitter);
   if (Array.isArray(raw.roles)) out.roles = raw.roles.filter((r): r is string => typeof r === "string" && r.trim().length > 0).map((r) => r.trim()).slice(0, 6);
   return out;
 }
@@ -314,7 +325,13 @@ const ACTIONS: Record<string, ActionDef> = {
       const p = coerceProfile(raw);
       const has = Object.values(p).some((v) => (Array.isArray(v) ? v.length : v !== undefined));
       if (!has) return { status: "ignored", note: "nothing to save" };
-      const bits = [p.roles?.length ? `roles: ${p.roles.join(", ")}` : "", p.location ? `in ${p.location}` : "", p.compMin && p.compMax ? `comp ${p.compMin}–${p.compMax}` : ""].filter(Boolean).join(" · ");
+      const linkCount = [p.portfolioUrl, p.linkedin, p.github, p.twitter].filter(Boolean).length;
+      const bits = [
+        p.roles?.length ? `roles: ${p.roles.join(", ")}` : "",
+        p.location ? `in ${p.location}` : "",
+        p.compMin && p.compMax ? `comp ${p.compMin}–${p.compMax}` : "",
+        linkCount ? `${linkCount} link${linkCount > 1 ? "s" : ""}` : "",
+      ].filter(Boolean).join(" · ");
       return {
         status: "confirm",
         summary: `Save your profile?${bits ? ` (${bits})` : ""}`,

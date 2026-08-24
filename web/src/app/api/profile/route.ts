@@ -22,6 +22,10 @@ type ProfilePatch = {
   compMax?: number;
   currency?: string;
   remote?: string;
+  portfolioUrl?: string;
+  linkedin?: string;
+  github?: string;
+  twitter?: string;
 };
 
 function isObj(v: unknown): v is Record<string, unknown> {
@@ -43,6 +47,10 @@ function patchToProfile(p: ProfilePatch): Record<string, unknown> {
   if (p.name) candidate.full_name = p.name;
   if (p.email) candidate.email = p.email;
   if (p.location) candidate.location = p.location;
+  if (p.portfolioUrl) candidate.portfolio_url = p.portfolioUrl;
+  if (p.linkedin) candidate.linkedin = p.linkedin;
+  if (p.github) candidate.github = p.github;
+  if (p.twitter) candidate.twitter = p.twitter;
   if (Object.keys(candidate).length) out.candidate = candidate;
   if (p.roles?.length) out.target_roles = { primary: p.roles.slice(0, 6) };
   const comp: Record<string, unknown> = {};
