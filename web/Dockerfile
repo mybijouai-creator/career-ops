@@ -42,7 +42,11 @@ RUN --mount=type=cache,target=/root/.npm \
 
 # The build needs the parent checkout present: route handlers import from ../,
 # and next.config.mjs pins turbopack's root relative to web/.
-COPY package.json package-lock.json ./
+#
+# No package-lock.json here: the root one is deliberately gitignored (only
+# web/package-lock.json is committed — see .gitignore), so a fresh clone never
+# has it. This COPY is for the checkout's presence, not an install.
+COPY package.json ./
 COPY web/ ./web/
 
 # A real directory during the build so pages that stat the checkout don't throw.
@@ -56,12 +60,16 @@ RUN cd web && npm run build
 # stage carries these and nothing else from the root package.
 FROM node:${NODE_VERSION} AS core-deps
 WORKDIR /core
-COPY package.json package-lock.json ./
+# `npm install`, not `npm ci`: the root package-lock.json is deliberately
+# gitignored (only web/package-lock.json is committed), so a fresh clone has no
+# lockfile for `ci` to require. The root package.json's dependency list is small
+# and unpinned by design; `install` is the correct tool for that shape.
+COPY package.json ./
 # --ignore-scripts: the root postinstall runs `playwright install`, which would
 # fetch a second browser to the wrong place. Chromium is installed once below,
 # at the pinned version.
 RUN --mount=type=cache,target=/root/.npm \
-    npm ci --omit=dev --no-audit --no-fund --ignore-scripts
+    npm install --omit=dev --no-audit --no-fund --ignore-scripts
 
 # ── Stage 3: runtime ─────────────────────────────────────────────────────────
 FROM node:${NODE_VERSION} AS runtime
