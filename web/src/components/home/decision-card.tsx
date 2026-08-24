@@ -34,8 +34,16 @@ export function DecisionCard({ app }: { app: Application }) {
       } else if (out.kind === "unavailable") {
         toast(out.reason, "warn");
         return;
+      } else if (out.kind === "sent" && !out.response.ok) {
+        // A real server error must not read as success: the card would
+        // otherwise leave the queue while the tracker never changed, and the
+        // user would have no reason to look at this row again.
+        const body = await out.response.json().catch(() => null);
+        toast(body?.error ?? `${app.company} → ${status} failed (HTTP ${out.response.status}).`, "warn");
+        return;
       }
-      // The card leaves the queue either way: the decision has been made and
+      // The card leaves the queue only once the write actually succeeded (sent
+      // + ok, or durably queued for replay): the decision has been made and
       // recorded, and re-showing it would invite a second tap on the same row.
       setDone(status);
       router.refresh();

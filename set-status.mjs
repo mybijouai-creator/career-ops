@@ -579,7 +579,17 @@ const result = {
 };
 
 if (flags.json) {
-  console.log(JSON.stringify(result, null, 2));
+  // Single line, not pretty-printed: web/src/lib/status-cli.mjs's parseCliJson
+  // reads the result by scanning stdout for the LAST line that starts with `{`
+  // and parses as a complete object on its own — specifically so a diagnostic
+  // line before the result can't shadow it. A pretty-printed `result` opens
+  // with a bare "{" on its own line, which never parses standalone, so the scan
+  // ran past the whole document on every line and found nothing: every
+  // successful status change made through the web UI reported a false 500
+  // (the write itself still committed — set-status.mjs and the writes it makes
+  // are unaffected — only the web route's success response was wrong). The
+  // usage-error branch above already emits single-line JSON; this matches it.
+  console.log(JSON.stringify(result));
 } else {
   const verb = flags.dryRun ? 'would set' : changed ? 'set' : 'already';
   console.log(`✅ #${target.num} ${target.company} — ${target.role}: ${verb} ${oldStatus} → ${newStatus}${note ? ` (note: ${note})` : ''}`);

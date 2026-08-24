@@ -128,6 +128,31 @@ const TRACKER_REPORT_MISMATCH = `# Applications Tracker
   rmSync(sb.dir, { recursive: true, force: true });
 }
 
+// ── 1i. --json success output is a single line (#3200-class regression) ─
+// web/src/lib/status-cli.mjs's parseCliJson scans stdout for the LAST line
+// that starts with "{" and parses as a complete object on its own — so a
+// diagnostic line before the result can't shadow it. A pretty-printed result
+// opens with a bare "{" on its own line, which never parses standalone: the
+// scan runs past the whole document and finds nothing, and the web route
+// reports a false 500 for a write that already committed. This regressed
+// silently once because set-status.mjs and status-cli.mjs are tested in
+// isolation with fixtures that never exercised each other's real contract —
+// this test is the integration check that closes that gap.
+{
+  const sb = makeSandbox(TRACKER_9);
+  const r = runSetStatus(['2', 'Applied', '--json'], sb);
+  const jsonLines = r.stdout.split('\n').filter((l) => l.trim().startsWith('{'));
+  const lastLine = jsonLines[jsonLines.length - 1] || '';
+  let parsedLastLine = null;
+  try { parsedLastLine = JSON.parse(lastLine); } catch {}
+  if (r.code === 0 && parsedLastLine && parsedLastLine.changed === true) {
+    pass('json-success: the result is a single line the web parser can find');
+  } else {
+    fail(`json-success: expected the result on one line; got:\n${r.stdout}`);
+  }
+  rmSync(sb.dir, { recursive: true, force: true });
+}
+
 // ── 1b. Numeric selector refuses a tracker/report ID mismatch ───
 {
   const sb = makeSandbox(TRACKER_REPORT_MISMATCH);
