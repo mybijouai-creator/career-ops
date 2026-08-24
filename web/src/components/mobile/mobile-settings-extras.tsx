@@ -7,6 +7,7 @@ import type { ComponentType, SVGProps } from "react";
 import { usePwa } from "@/components/pwa/pwa-provider";
 import { useToast } from "@/components/mobile/toast";
 import { UsageMeter } from "@/components/usage-meter";
+import { PushToggle } from "@/components/pwa/push-toggle";
 import type { QueuedEntry } from "@/lib/pwa/offline";
 import { labelOf } from "@pwa/queue-core.mjs";
 
@@ -97,6 +98,7 @@ function OfflineAndData() {
           }
         />
         <Row name="Gates offline" note="never auto-approve on reconnect" state="strict" tone="text-red-500 dark:text-red-400" />
+        <PushToggle />
       </div>
 
       <CapturedIntents />

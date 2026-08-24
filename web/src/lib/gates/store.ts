@@ -4,6 +4,7 @@ import { randomBytes, randomUUID } from "node:crypto";
 import { careerOpsRoot } from "@/lib/career-ops";
 import { canDecide, gateEvent, isExpired, ledgerHeader, serializeRow } from "@/lib/gates/core.mjs";
 import { emit, resume, type RunEvent } from "@/lib/runs/store";
+import { notifyGateOpened } from "@/lib/push/send";
 
 /**
  * store.ts — pending gates and the append-only ledger (HANDOFF.md §5).
@@ -120,6 +121,11 @@ export function openGate(args: {
   appendLedger(gate, "pending");
   // Emitting the gate is what suspends the run — see runs/store.ts emit().
   emit(args.runId, gateEvent(gate) as unknown as RunEvent);
+  // Notify the user's devices. Fire-and-forget: a push service being slow or
+  // unreachable must never delay or fail opening the gate — the gate is the
+  // authoritative record, the notification is a nudge to come and look at it.
+  // The payload carries NO diff and no company name; see push/core.mjs.
+  void notifyGateOpened(listPending().length).catch(() => {});
   return gate;
 }
 
