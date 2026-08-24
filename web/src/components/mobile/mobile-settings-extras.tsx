@@ -8,6 +8,7 @@ import { usePwa } from "@/components/pwa/pwa-provider";
 import { useToast } from "@/components/mobile/toast";
 import { UsageMeter } from "@/components/usage-meter";
 import { PushToggle } from "@/components/pwa/push-toggle";
+import { BackgroundWorkers } from "@/components/workers/background-workers";
 import type { QueuedEntry } from "@/lib/pwa/offline";
 import { labelOf } from "@pwa/queue-core.mjs";
 
@@ -40,6 +41,7 @@ export function MobileSettingsExtras() {
   return (
     <div className="mt-8 space-y-6 md:hidden">
       <MoreNav />
+      <BackgroundWorkers />
       <OfflineAndData />
     </div>
   );
