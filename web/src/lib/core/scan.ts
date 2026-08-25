@@ -78,6 +78,8 @@ type ScanJson = {
   postingsDroppedNoDate?: number;
   unreachableBoards?: number;
   offers?: JsonOffer[];
+  /** Present only on a fatal, pre-completion crash (main().catch() in scan-ats-full.mjs) — offers is always [] alongside it. */
+  error?: string;
 };
 
 export function runDiscovery(filters: ExploreFilters, onEvent: (e: ScanEvent) => void): Promise<DiscoveredOffer[]> {
@@ -230,7 +232,13 @@ export function runDiscovery(filters: ExploreFilters, onEvent: (e: ScanEvent) =>
         } catch {
           j = null;
         }
-        if (j && Array.isArray(j.offers)) {
+        if (j && j.error) {
+          // A fatal, pre-completion crash (main().catch() in scan-ats-full.mjs)
+          // still emits a valid envelope — surface the REAL reason instead of
+          // silently reporting "0 matches" (offers is always [] here, which
+          // would otherwise pass the Array.isArray check below and hide it).
+          onEvent({ kind: "error", message: j.error });
+        } else if (j && Array.isArray(j.offers)) {
           for (const o of j.offers) {
             const url = (o.url || "").trim();
             if (!url || seen.has(url) || !o.company || !o.title) continue;
