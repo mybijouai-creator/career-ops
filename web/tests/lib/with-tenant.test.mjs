@@ -12,7 +12,7 @@ import os from "node:os";
 import path from "node:path";
 import { openDatabase, _resetForTest, createUser, setApiKey } from "../../src/lib/auth/db.mjs";
 import { SESSION_COOKIE, loginCookie } from "../../src/lib/auth/session.mjs";
-import { withTenant, withTenantHandler } from "../../src/lib/auth/with-tenant.mjs";
+import { withTenant, withTenantHandler, withTenantForUser } from "../../src/lib/auth/with-tenant.mjs";
 import { currentTenantRoot, currentApiKeyEnv } from "../../src/lib/auth/tenant-context.mjs";
 
 function fakeRequest(cookieHeader) {
@@ -143,4 +143,29 @@ test("withTenantHandler forwards extra arguments (e.g. a dynamic route's params)
   const result = wrapped(fakeRequest(undefined), fakeCtx);
   assert.equal(result, fakeCtx);
   assert.deepEqual(await result.params, { roleId: "42" });
+});
+
+// withTenantForUser — the shared core withTenant() (a Request) and
+// with-tenant-page.ts's withTenantPage() (next/headers' cookies(), for
+// Server Component pages that read career-ops data outside any route
+// handler) both reduce to, once each has resolved its own "user or null".
+// with-tenant-page.ts itself imports next/headers and so can't be
+// exercised by a plain `node --test` run — this is what actually proves the
+// tenant-resolution logic it delegates to.
+
+test("withTenantForUser: null user runs with no tenant context set (single-tenant fallback)", () => {
+  return withTempPlatformRoot(() => {
+    _resetForTest(openDatabase(":memory:"));
+    const seen = withTenantForUser(null, () => currentTenantRoot());
+    assert.equal(seen, undefined);
+  });
+});
+
+test("withTenantForUser: a real user gets their own tenant root, same as withTenant(req, ...)", () => {
+  return withTempPlatformRoot((tmp) => {
+    _resetForTest(openDatabase(":memory:"));
+    const user = createUser("page-render@example.com", "correcthorsebattery");
+    const seen = withTenantForUser(user, () => currentTenantRoot());
+    assert.equal(seen, path.join(tmp, "tenants", user.id));
+  });
 });

@@ -47,12 +47,24 @@ function apiKeyEnvFor(userId) {
   return varName ? { [varName]: secret.key } : {};
 }
 
-export function withTenant(req, fn) {
-  const user = getSessionUser(req);
+/**
+ * The shared core both withTenant() (a Request, for route handlers) and
+ * with-tenant-page.ts (a session already resolved from next/headers'
+ * cookies(), for Server Component pages) reduce to — a Request and Next's
+ * cookies() are two different ways to arrive at the same "user or null",
+ * and everything past that point (provision the root, resolve the stored
+ * API key, run inside the ALS context) is identical either way.
+ */
+export function withTenantForUser(user, fn) {
   if (!user) return fn();
   const root = ensureTenantRoot(user.id);
   const apiKeyEnv = apiKeyEnvFor(user.id);
   return runWithTenantContext(root, apiKeyEnv, fn);
+}
+
+export function withTenant(req, fn) {
+  const user = getSessionUser(req);
+  return withTenantForUser(user, fn);
 }
 
 /**
