@@ -24,8 +24,18 @@ import { BuiltByFooter } from "@/components/onboarding/built-by-footer";
 import { instrumentSerif } from "@/lib/fonts";
 import { NAV_ITEMS, isActivePath } from "@/lib/nav-items";
 
+// Routes with no app chrome: nobody is signed in yet (or is in the middle of
+// signing in), so the sidebar's nav links, the assistant, the onboarding tour
+// and the beta banner all assume a workspace that doesn't exist yet.
+const BARE_ROUTES = new Set(["/login", "/signup"]);
+
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  if (BARE_ROUTES.has(pathname)) {
+    // Still inside PwaProvider: the theme script and install-prompt plumbing
+    // apply regardless of auth state.
+    return <PwaProvider>{children}</PwaProvider>;
+  }
   return (
     <PwaProvider>
       <DecisionCountProvider>

@@ -16,6 +16,15 @@ import { runWorker } from "@/lib/workers/run";
  * failed worker beyond its next natural due time, because a scan that failed
  * because a board is down should wait, not hammer it.
  *
+ * KNOWN GAP (multi-tenant): this timer runs process-wide, outside any
+ * request's AsyncLocalStorage tenant context (see web/src/lib/auth/
+ * tenant-context.mjs). It always resolves the single shared/default
+ * CAREER_OPS_ROOT, never a signed-up user's own tenants/{userId}/ tree — so on
+ * a deployment with accounts enabled, automatic background scanning still
+ * only covers the default root. Each tenant can still trigger their own work
+ * on demand through the normal request-scoped routes, which ARE isolated.
+ * Tracked in DEPLOY.md and DATA_CONTRACT.md; not yet fixed.
+ *
  * Opt out with CAREER_OPS_WORKERS=off.
  */
 

@@ -5,15 +5,23 @@ import { parseApplications } from "@/lib/tracker-table.mjs";
 // One definition of the `{n}-RESERVED.md` convention, shared with
 // run-cli-support.mjs — see report-files.mjs for why it lives there.
 import { isReservedReportFile } from "@/lib/report-files.mjs";
+import { currentTenantRoot } from "@/lib/auth/tenant-context.mjs";
 
 /**
  * Resolve the career-ops "home" — the directory holding the user's sibling
- * files (cv.md, data/, reports/). In production the web/ app lives inside the
- * career-ops checkout, so the home is its parent (..). Dev overrides via
- * CAREER_OPS_ROOT to read the user's real (gitignored) data from a separate
- * checkout — see web/.env.local.
+ * files (cv.md, data/, reports/).
+ *
+ * Checked in order:
+ *  1. The current request's tenant root, if withTenant() wrapped this call
+ *     (multi-tenant mode, an authenticated request) — see tenant-context.mjs
+ *     for why this is ambient (AsyncLocalStorage) rather than a parameter.
+ *  2. CAREER_OPS_ROOT, the single-tenant override (dev pointing at a real
+ *     checkout, or a single-tenant production deployment's volume root).
+ *  3. The web/ app's own parent directory — the default when neither is set.
  */
 export function careerOpsRoot(): string {
+  const tenant = currentTenantRoot();
+  if (tenant) return tenant;
   const env = process.env.CAREER_OPS_ROOT?.trim();
   if (env) return env;
   return path.resolve(process.cwd(), "..");

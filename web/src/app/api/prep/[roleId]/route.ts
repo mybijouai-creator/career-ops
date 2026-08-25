@@ -3,6 +3,7 @@ import { createRun, emit } from "@/lib/runs/store";
 import { executeStep } from "@/lib/runs/execute";
 import { prepPrompt } from "@/lib/runs/prompts.mjs";
 import { MODE_COST_USD } from "@/lib/runs/router.mjs";
+import { withTenantHandler } from "@/lib/auth/with-tenant.mjs";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -20,7 +21,7 @@ export const maxDuration = 800;
  * prep run takes minutes — the client follows /api/runs/:runId/stream. Same
  * shape as the intent route, so the console needs no special case for it.
  */
-export async function POST(req: Request, ctx: { params: Promise<{ roleId: string }> }) {
+export const POST = withTenantHandler(async (req: Request, ctx: { params: Promise<{ roleId: string }> }) => {
   const { roleId } = await ctx.params;
   if (!/^\d+$/.test(roleId)) {
     return Response.json({ error: "a numeric tracker row number is required" }, { status: 400 });
@@ -66,4 +67,4 @@ export async function POST(req: Request, ctx: { params: Promise<{ roleId: string
   })();
 
   return Response.json({ runId: run.id, plan, estCostUsd: MODE_COST_USD.prep });
-}
+});

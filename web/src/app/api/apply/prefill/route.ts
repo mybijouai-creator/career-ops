@@ -4,6 +4,8 @@ import path from "node:path";
 import { resolveCli } from "@/lib/clis";
 import { careerOpsRoot, readMemory } from "@/lib/career-ops";
 import { getSession } from "@/lib/apply/session";
+import { withTenantHandler } from "@/lib/auth/with-tenant.mjs";
+import { spawnEnv } from "@/lib/auth/spawn-env.mjs";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -72,7 +74,7 @@ function extractJsonObject(text: string): { obj: Record<string, unknown> | null;
 // report. We stream a live diagnostic log of every step (spawn, heartbeats,
 // exit code/signal, parse outcome) so a stuck/empty prefill is observable on the
 // page AND written to <root>/.career-ops-web/apply-prefill.log for debugging.
-export async function POST(req: Request) {
+export const POST = withTenantHandler(async (req: Request) => {
   let body: { sessionId?: string; cliId?: string };
   try {
     body = await req.json();
@@ -158,7 +160,7 @@ Output ONLY a compact JSON object mapping each field id → {"value": "...", "ne
       const result = await new Promise<{ buf: string; code: number | null; signal: NodeJS.Signals | null }>((resolve) => {
         // spawnHeadlessCli closes stdin right after spawning, so the CLI doesn't
         // wait on piped input that will never arrive.
-        const child = spawnHeadlessCli(binPath, args, { cwd: careerOpsRoot(), env: process.env });
+        const child = spawnHeadlessCli(binPath, args, { cwd: careerOpsRoot(), env: spawnEnv() });
         let buf = "";
         let firstByteAt = 0;
         const hb = setInterval(() => {
@@ -219,4 +221,4 @@ Output ONLY a compact JSON object mapping each field id → {"value": "...", "ne
   });
 
   return new Response(stream, { headers: { "Content-Type": "application/x-ndjson", "Cache-Control": "no-store" } });
-}
+});

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { pipelineSummary } from "@/lib/career-ops";
 import { canonStatus, scoreNum } from "@/lib/format";
 import { cumulativeTiles } from "@/lib/funnel-tiles.mjs";
+import { withTenantPage } from "@/lib/auth/with-tenant-page";
 
 export const dynamic = "force-dynamic";
 
@@ -16,7 +17,8 @@ const STAGES: { key: string; label: string }[] = [
   { key: "DISCARDED", label: "Discarded" },
 ];
 
-export default function Analytics() {
+export default async function Analytics() {
+  return withTenantPage(() => {
   const { applications } = pipelineSummary();
   const total = applications.length;
 
@@ -95,6 +97,7 @@ export default function Analytics() {
       </Section>
     </div>
   );
+  });
 }
 
 function Stat({ value, label, hint }: { value: number | string; label: string; hint?: string }) {

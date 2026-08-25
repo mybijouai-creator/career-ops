@@ -1,4 +1,5 @@
 import { approveGate } from "@/lib/gates/store";
+import { withTenantHandler } from "@/lib/auth/with-tenant.mjs";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -16,7 +17,7 @@ export const maxDuration = 800;
  *
  * There is no bypass parameter. HANDOFF §1: "There is no toggle to disable this."
  */
-export async function POST(req: Request, ctx: { params: Promise<{ gateId: string }> }) {
+export const POST = withTenantHandler(async (req: Request, ctx: { params: Promise<{ gateId: string }> }) => {
   const { gateId } = await ctx.params;
   let body: { token?: unknown } = {};
   try {
@@ -29,4 +30,4 @@ export async function POST(req: Request, ctx: { params: Promise<{ gateId: string
   const result = await approveGate(gateId, token);
   if (!result.ok) return Response.json({ error: result.reason }, { status: result.status });
   return Response.json({ ok: true, files: result.files });
-}
+});

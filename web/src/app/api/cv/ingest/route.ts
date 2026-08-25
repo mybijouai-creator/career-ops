@@ -4,6 +4,8 @@ import os from "node:os";
 import path from "node:path";
 import { resolveCli } from "@/lib/clis";
 import { careerOpsRoot } from "@/lib/career-ops";
+import { withTenantHandler } from "@/lib/auth/with-tenant.mjs";
+import { spawnEnv } from "@/lib/auth/spawn-env.mjs";
 
 // Parse a CV (pasted text or an uploaded PDF) into clean cv.md markdown by running
 // the USER'S OWN CLI headless — the web never ships a heavyweight parser, and the
@@ -57,7 +59,7 @@ ${source}`;
 const TEXT_SRC = (t: string) => `SOURCE (the user's CV, pasted as text — convert it):\n"""\n${t.slice(0, 24000)}\n"""`;
 const FILE_SRC = (p: string) => `SOURCE: the user's CV is the file at this local path — READ it with your file/Read tool, then convert it:\n${p}`;
 
-export async function POST(req: Request) {
+export const POST = withTenantHandler(async (req: Request) => {
   const ctype = req.headers.get("content-type") || "";
   let cliId = "";
   let promptSource = "";
@@ -119,7 +121,7 @@ export async function POST(req: Request) {
 
   let child;
   try {
-    child = spawnHeadlessCli(binPath, args, { cwd: careerOpsRoot(), env: process.env });
+    child = spawnHeadlessCli(binPath, args, { cwd: careerOpsRoot(), env: spawnEnv() });
   } catch (e) {
     if (tempFile) cleanupTemp(tempFile); // never leak the CV temp if spawn throws sync
     return Response.json({ error: e instanceof Error ? e.message : "failed to start the CLI" }, { status: 500 });
@@ -223,7 +225,7 @@ export async function POST(req: Request) {
   return new Response(stream, {
     headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-cache, no-transform", "X-Accel-Buffering": "no" },
   });
-}
+});
 
 function cleanupTemp(file: string) {
   try {

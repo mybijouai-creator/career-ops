@@ -4,6 +4,7 @@ import { readInterviewPrep, readApplications } from "@/lib/career-ops";
 import { instrumentSerif } from "@/lib/fonts";
 import { CopyableCommand } from "@/components/copyable-command";
 import { PrepRunner } from "@/components/prep/prep-runner";
+import { withTenantPage } from "@/lib/auth/with-tenant-page";
 
 // The Interviews route from the PWA prototype ("loop plans, story bank, gaps").
 //
@@ -20,11 +21,12 @@ export const dynamic = "force-dynamic";
 
 export const metadata = { title: "Interviews — career-ops" };
 
-export default function PrepPage() {
-  const { docs, sessions } = readInterviewPrep();
-  const interviewing = readApplications().filter((a) => /^interview/i.test(a.status));
+export default async function PrepPage() {
+  return withTenantPage(() => {
+    const { docs, sessions } = readInterviewPrep();
+    const interviewing = readApplications().filter((a) => /^interview/i.test(a.status));
 
-  return (
+    return (
     <div className="co-surface mx-auto max-w-3xl px-4 py-6 sm:px-6 sm:py-8">
       <header>
         <p className="font-mono text-xs uppercase tracking-[0.2em] text-muted">
@@ -121,5 +123,6 @@ export default function PrepPage() {
         </p>
       </section>
     </div>
-  );
+    );
+  });
 }

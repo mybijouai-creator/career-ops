@@ -1,4 +1,5 @@
 import { subscriptionCount, vapidKeys } from "@/lib/push/send";
+import { withTenantHandler } from "@/lib/auth/with-tenant.mjs";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -10,8 +11,8 @@ export const dynamic = "force-dynamic";
  * subscribe button rather than offer one that cannot work, which is the case on
  * a read-only config directory.
  */
-export async function GET() {
+export const GET = withTenantHandler(async () => {
   const keys = vapidKeys();
   if (!keys) return Response.json({ available: false, subscriptions: 0 });
   return Response.json({ available: true, publicKey: keys.publicKey, subscriptions: subscriptionCount() });
-}
+});

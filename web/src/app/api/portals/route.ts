@@ -3,6 +3,7 @@ import path from "node:path";
 import * as yaml from "js-yaml";
 import { careerOpsRoot } from "@/lib/career-ops";
 import { atomicWriteWithBackup } from "@/lib/core/safe-write";
+import { withTenantHandler } from "@/lib/auth/with-tenant.mjs";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -17,7 +18,7 @@ function isObj(v: unknown): v is Record<string, unknown> {
   return !!v && typeof v === "object" && !Array.isArray(v);
 }
 
-export async function POST(req: Request) {
+export const POST = withTenantHandler(async (req: Request) => {
   let body: { roles?: string[]; location?: string[] };
   try {
     body = (await req.json()) as { roles?: string[]; location?: string[] };
@@ -55,4 +56,4 @@ export async function POST(req: Request) {
     return Response.json({ error: e instanceof Error ? e.message : "write failed" }, { status: 500 });
   }
   return Response.json({ ok: true, roles: roles.length });
-}
+});

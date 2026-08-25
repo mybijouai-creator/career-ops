@@ -3,6 +3,7 @@ import path from "node:path";
 import { atomicWrite } from "@/lib/core/safe-write";
 import { isRealISODate, localISODate } from "@/lib/followups";
 import { followupsLogPath, withFollowupsWrite, followupsWriteError } from "@/lib/followups-server";
+import { withTenantHandler } from "@/lib/auth/with-tenant.mjs";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -16,7 +17,7 @@ export const dynamic = "force-dynamic";
 
 const pinRe = (appNum: number) => new RegExp(`^-\\s+next\\s+#${appNum}\\s`, "i");
 
-export async function POST(req: Request) {
+export const POST = withTenantHandler(async (req: Request) => {
   let body: { appNum?: string | number; date?: string };
   try {
     body = (await req.json()) as typeof body;
@@ -49,10 +50,10 @@ export async function POST(req: Request) {
   } catch (e) {
     return followupsWriteError(e, "write failed");
   }
-}
+});
 
 // Clear the pin for an application (the computed cadence takes over again).
-export async function DELETE(req: Request) {
+export const DELETE = withTenantHandler(async (req: Request) => {
   let body: { appNum?: string | number };
   try {
     body = (await req.json()) as typeof body;
@@ -79,4 +80,4 @@ export async function DELETE(req: Request) {
   } catch (e) {
     return followupsWriteError(e, "delete failed");
   }
-}
+});
