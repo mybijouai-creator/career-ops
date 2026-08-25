@@ -48,6 +48,16 @@ const SCHEMA = `
     auth_tag TEXT NOT NULL,
     updated_at INTEGER NOT NULL
   );
+  CREATE TABLE IF NOT EXISTS login_failures (
+    email TEXT PRIMARY KEY,
+    count INTEGER NOT NULL,
+    blocked_until INTEGER NOT NULL
+  );
+  CREATE TABLE IF NOT EXISTS signup_attempts (
+    ip TEXT PRIMARY KEY,
+    count INTEGER NOT NULL,
+    window_start INTEGER NOT NULL
+  );
 `;
 
 /** Open (and migrate) a database at a path, or ":memory:" for tests. Exported
@@ -186,4 +196,83 @@ export function getApiKeyInfo(userId, masterKey) {
 
 export function deleteApiKey(userId) {
   db().prepare("DELETE FROM api_keys WHERE user_id = ?").run(userId);
+}
+
+// --- Login brute-force throttle (Phase 4 security pass) ---
+//
+// Was an in-process Map in the route handler (Phase 1) — reset on every
+// deploy/restart, and this app runs as one Node process anyway (see db.mjs's
+// header), so persisting it here buys exactly the restart-resistance that
+// mattered, at the same "one process" cost the rest of this file already
+// accepts. Per-email exponential backoff, reset on a successful login.
+
+const LOGIN_BASE_DELAY_MS = 1000;
+const LOGIN_MAX_DELAY_MS = 30_000;
+
+/** Milliseconds until this email may attempt another login, or 0 if not throttled. */
+export function loginThrottleRemainingMs(email) {
+  const normalized = String(email ?? "").trim().toLowerCase();
+  const row = db().prepare("SELECT blocked_until FROM login_failures WHERE email = ?").get(normalized);
+  if (!row) return 0;
+  return Math.max(0, row.blocked_until - Date.now());
+}
+
+/** Record a failed login attempt, extending this email's backoff. */
+export function recordLoginFailure(email) {
+  const normalized = String(email ?? "").trim().toLowerCase();
+  const row = db().prepare("SELECT count FROM login_failures WHERE email = ?").get(normalized);
+  const count = (row?.count ?? 0) + 1;
+  const blockedUntil = Date.now() + Math.min(LOGIN_MAX_DELAY_MS, LOGIN_BASE_DELAY_MS * 2 ** (count - 1));
+  db()
+    .prepare(
+      `INSERT INTO login_failures (email, count, blocked_until) VALUES (?, ?, ?)
+       ON CONFLICT(email) DO UPDATE SET count = excluded.count, blocked_until = excluded.blocked_until`,
+    )
+    .run(normalized, count, blockedUntil);
+}
+
+/** Clear this email's backoff after a successful login. */
+export function recordLoginSuccess(email) {
+  const normalized = String(email ?? "").trim().toLowerCase();
+  db().prepare("DELETE FROM login_failures WHERE email = ?").run(normalized);
+}
+
+// --- Signup rate limit (Phase 4 security pass) ---
+//
+// Phase 1-3 had no limit at all: an unauthenticated POST /api/auth/signup
+// both writes a users row AND (once a session is established) triggers a
+// full tenant directory to be provisioned on next use — a scriptable way to
+// fill the volume's disk with tenant trees and bloat the accounts table.
+// Fixed-window per-IP limit, generous enough not to bother a real household
+// signing up a few people from behind one NAT.
+
+const SIGNUP_WINDOW_MS = 60 * 60 * 1000; // 1 hour
+const SIGNUP_MAX_PER_WINDOW = 8;
+
+/** Milliseconds until this IP may sign up again, or 0 if not throttled. */
+export function signupThrottleRemainingMs(ip) {
+  const key = String(ip ?? "unknown");
+  const row = db().prepare("SELECT count, window_start FROM signup_attempts WHERE ip = ?").get(key);
+  if (!row) return 0;
+  const elapsed = Date.now() - row.window_start;
+  if (elapsed >= SIGNUP_WINDOW_MS) return 0; // the window has rolled over
+  if (row.count < SIGNUP_MAX_PER_WINDOW) return 0;
+  return SIGNUP_WINDOW_MS - elapsed;
+}
+
+/** Record one signup attempt from this IP, starting a fresh window if the last one expired. */
+export function recordSignupAttempt(ip) {
+  const key = String(ip ?? "unknown");
+  const now = Date.now();
+  const row = db().prepare("SELECT count, window_start FROM signup_attempts WHERE ip = ?").get(key);
+  if (!row || now - row.window_start >= SIGNUP_WINDOW_MS) {
+    db()
+      .prepare(
+        `INSERT INTO signup_attempts (ip, count, window_start) VALUES (?, 1, ?)
+         ON CONFLICT(ip) DO UPDATE SET count = 1, window_start = excluded.window_start`,
+      )
+      .run(key, now);
+  } else {
+    db().prepare("UPDATE signup_attempts SET count = count + 1 WHERE ip = ?").run(key);
+  }
 }

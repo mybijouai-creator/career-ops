@@ -21,6 +21,11 @@ import {
   getApiKeyInfo,
   deleteApiKey,
   AuthError,
+  loginThrottleRemainingMs,
+  recordLoginFailure,
+  recordLoginSuccess,
+  signupThrottleRemainingMs,
+  recordSignupAttempt,
 } from "../../src/lib/auth/db.mjs";
 
 const MASTER_KEY = Buffer.alloc(32, 7); // fixed, deterministic — test-only
@@ -159,4 +164,69 @@ test("two users' API keys never cross — each decrypts only their own", () => {
   setApiKey(bob.id, "openai", "sk-bob-key", MASTER_KEY);
   assert.equal(getApiKeySecret(alice.id, MASTER_KEY).key, "sk-alice-key");
   assert.equal(getApiKeySecret(bob.id, MASTER_KEY).key, "sk-bob-key");
+});
+
+// --- Login throttle (Phase 4: moved off an in-process Map, see db.mjs) ---
+
+test("loginThrottleRemainingMs: 0 for an email with no recorded failures", () => {
+  freshDb();
+  assert.equal(loginThrottleRemainingMs("nobody@example.com"), 0);
+});
+
+test("recordLoginFailure: throttles after a failure, backs off further on repeats, is email-case-insensitive", () => {
+  freshDb();
+  recordLoginFailure("Case@Example.com");
+  const first = loginThrottleRemainingMs("case@example.com");
+  assert.ok(first > 0 && first <= 1000, `expected ~1000ms, got ${first}`);
+
+  recordLoginFailure("case@example.com");
+  const second = loginThrottleRemainingMs("case@example.com");
+  assert.ok(second > first, "backoff must grow on a repeated failure");
+});
+
+test("recordLoginFailure: backoff is capped, not unbounded", () => {
+  freshDb();
+  for (let i = 0; i < 20; i++) recordLoginFailure("repeat@example.com");
+  assert.ok(loginThrottleRemainingMs("repeat@example.com") <= 30_000);
+});
+
+test("recordLoginSuccess: clears the throttle entirely", () => {
+  freshDb();
+  recordLoginFailure("clears@example.com");
+  assert.ok(loginThrottleRemainingMs("clears@example.com") > 0);
+  recordLoginSuccess("clears@example.com");
+  assert.equal(loginThrottleRemainingMs("clears@example.com"), 0);
+});
+
+test("login throttle persists across a fresh module-level lookup (same db instance) — the whole point of moving off the in-process Map", () => {
+  freshDb();
+  recordLoginFailure("persisted@example.com");
+  // Simulate "a different request handler" reading the same underlying store.
+  assert.ok(loginThrottleRemainingMs("persisted@example.com") > 0);
+});
+
+// --- Signup rate limit (Phase 4: new — Phase 1-3 had no limit at all) ---
+
+test("signupThrottleRemainingMs: 0 for an IP with no recorded attempts", () => {
+  freshDb();
+  assert.equal(signupThrottleRemainingMs("203.0.113.1"), 0);
+});
+
+test("recordSignupAttempt: stays unthrottled under the per-window limit", () => {
+  freshDb();
+  for (let i = 0; i < 7; i++) recordSignupAttempt("203.0.113.2");
+  assert.equal(signupThrottleRemainingMs("203.0.113.2"), 0);
+});
+
+test("recordSignupAttempt: throttles once the per-window limit is hit", () => {
+  freshDb();
+  for (let i = 0; i < 8; i++) recordSignupAttempt("203.0.113.3");
+  assert.ok(signupThrottleRemainingMs("203.0.113.3") > 0);
+});
+
+test("signup throttle is per-IP — one IP hitting the limit never throttles another", () => {
+  freshDb();
+  for (let i = 0; i < 8; i++) recordSignupAttempt("203.0.113.4");
+  assert.ok(signupThrottleRemainingMs("203.0.113.4") > 0);
+  assert.equal(signupThrottleRemainingMs("203.0.113.5"), 0);
 });

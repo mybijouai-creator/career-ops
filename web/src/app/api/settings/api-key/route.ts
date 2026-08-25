@@ -47,6 +47,10 @@ export async function PUT(req: Request) {
   const apiKey = typeof body.apiKey === "string" ? body.apiKey.trim() : "";
   if (!PROVIDERS.has(provider)) return Response.json({ error: `provider must be one of: ${[...PROVIDERS].join(", ")}` }, { status: 400 });
   if (!apiKey) return Response.json({ error: "apiKey is required" }, { status: 400 });
+  // No real provider key is anywhere near this long — a generous ceiling that
+  // still stops an authenticated request from stuffing an arbitrarily large
+  // blob into the encrypted-at-rest column.
+  if (apiKey.length > 2000) return Response.json({ error: "apiKey is too long" }, { status: 400 });
 
   setApiKey(user.id, provider, apiKey, mk.key);
   return Response.json(getApiKeyInfo(user.id, mk.key));

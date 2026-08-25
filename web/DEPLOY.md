@@ -4,23 +4,29 @@ The app is **local-first by design**. Deploying it to a server is supported by
 the files in this repo, but it changes one assumption the code was built on, and
 that change is the most important thing on this page.
 
-## Read this first: there is no login
+## Read this first: two deployment modes, two different risk models
 
-career-ops has no user accounts and no authentication. What it has is an
-**origin guard** (`src/lib/origin-guard.mjs`, wired through `src/proxy.ts` over
-every `/api/*` route) that answers only:
+career-ops runs in one of two modes, chosen by whether `CAREER_OPS_ENCRYPTION_KEY`
+is set (see "Optional: multi-tenant accounts" below). Both need the **origin
+guard** (`src/lib/origin-guard.mjs`, wired through `src/proxy.ts` over every
+`/api/*` route), which independently of accounts answers only:
 
 - requests whose `Host` is loopback, **or** a host you explicitly opt in via
   `CAREER_OPS_WEB_ALLOWED_HOSTS`; and
 - requests that are same-origin (`Sec-Fetch-Site`), so a random page you visit
   cannot POST to the app in the background.
 
-Setting `CAREER_OPS_WEB_ALLOWED_HOSTS=careerops.example.com` is *required* for a
-deployment — without it the browser's own API calls 403 and the app looks
-broken. But it is also precisely the step that removes the loopback protection
-for that host. After it, the guard stops cross-origin abuse and nothing else.
+Setting `CAREER_OPS_WEB_ALLOWED_HOSTS=careerops.example.com` is *required* for
+either mode — without it the browser's own API calls 403 and the app looks
+broken.
 
-**So put authentication in front of the app.** Any of these is enough:
+**Single-tenant mode (`CAREER_OPS_ENCRYPTION_KEY` unset) — no accounts, no login.**
+The origin guard stops cross-origin abuse and drive-by CSRF, but anyone who
+reaches the URL at all reads and writes the one shared `cv.md`/tracker/reports
+with no login screen in the way — `/api/pipeline` reads your data, `/api/run`
+spawns an agent CLI with your API key (anyone with the URL can spend your
+tokens), `/api/status`/`/api/cv`/`/api/profile` write to your files. **Put
+authentication in front of the app** for this mode:
 
 | Option | Notes |
 |---|---|
@@ -28,17 +34,29 @@ for that host. After it, the guard stops cross-origin abuse and nothing else.
 | Coolify Basic Auth | Simplest. Set it on the resource in Coolify's UI. |
 | Tailscale / WireGuard | Strongest: the app is never on the public internet at all. |
 
-Deployed without one of those, the URL is the only thing standing between the
-internet and:
+**Multi-tenant mode (`CAREER_OPS_ENCRYPTION_KEY` set) — real accounts + per-user isolation.**
+`/signup` and `/login` gate every route (`withTenantHandler` — see
+DATA_CONTRACT.md's `tenants/{userId}/` row): each signed-up user reads and
+writes only their own `tenants/{userId}/` tree, brings their own provider API
+key (encrypted at rest, never another user's to spend), and a request with no
+valid session falls through to the single-tenant shared root above, not to
+another user's data. This is the real multi-user auth the single-tenant
+section above says doesn't exist — it does now, for this mode.
 
-- **your CV, tracker and evaluation reports** — readable over `/api/pipeline`;
-- **`/api/run`** — spawns an agent CLI with your API key, i.e. anyone with the
-  URL can spend your tokens;
-- **`/api/status`, `/api/cv`, `/api/profile`** — write to your files.
-
-This is not a bug in the guard. It is what "local-first, no accounts" means once
-the app is not on localhost. Real multi-user auth needs the gate store from
-`HANDOFF.md` §5 and per-user data isolation, neither of which exists yet.
+A front-door proxy gate (the same three options above) is no longer required
+to prevent one signed-up user from reading another's data — that's what
+accounts + isolation now do. **Recommended default: keep one anyway**, gating
+who is allowed to reach `/signup` at all (invite-only) rather than leaving it
+open to the public internet — an operational choice about who gets an
+account, not a data-isolation gap, and the safer starting posture for a
+deployment this new. Open public signup is a reasonable later choice once
+you're confident in the accounts+isolation layer and want it to behave like a
+self-serve product. Two things this mode does **not** yet cover, regardless of
+a front-door gate — see their own sections below for the full detail:
+background workers (scan/batch-eval/liveness) still run against the single
+shared/default root, not per-tenant, and no per-tenant request-body-size
+ceiling exists app-wide (a signed-up user could still send an oversized
+request to a route with no explicit limit of its own).
 
 ## What the deployment gives you
 
@@ -68,8 +86,16 @@ runtime stage's `apt-get install` if you need it.
    | `SERVICE_FQDN_WEB_3000` | yes | the same domain — Coolify routes and issues TLS from it |
    | `ANTHROPIC_API_KEY` | for AI features | your key |
    | `GEMINI_API_KEY`, `OPENAI_API_KEY`, `OPENROUTER_API_KEY` | no | the repo's alternative eval paths |
+   | `CAREER_OPS_ENCRYPTION_KEY` | for multi-tenant mode | see "Optional: multi-tenant accounts" below — omit for single-tenant |
 
-4. **Enable Basic Auth** on the resource (or put Cloudflare Access in front).
+4. **Enable Basic Auth** on the resource (or put Cloudflare Access in front)
+   either way. In single-tenant mode this is required — see "Read this first"
+   above. In multi-tenant mode it's no longer needed to protect one user's
+   data from another (accounts already do that), but it's the recommended
+   default anyway: it makes `/signup` invite-only rather than open to the
+   public internet, the safer starting posture for a deployment this new.
+   Drop it later once you're confident in the accounts+isolation layer and
+   want open public signup.
 5. Deploy. The first build takes a while — it installs Chromium.
 
 Health is reported on `GET /api/version`; the container's own healthcheck polls
@@ -190,6 +216,33 @@ one is active. This is layered on top of `cv.md`, not a replacement for it:
 whichever CV is active is kept mirrored into `cv.md`, so every mode, script
 and report that reads `cv.md` directly keeps working completely unmodified.
 See `web/src/lib/cv-library.mjs` and DATA_CONTRACT.md's `cvs/` row.
+
+**Security pass (Phase 4).** Both throttles below live in `_accounts.db`
+(`web/src/lib/auth/db.mjs`), not an in-process `Map` — a deploy/restart no
+longer resets an attacker's progress toward the limit:
+
+- **Login**: per-email exponential backoff on failed attempts (unchanged
+  behavior from Phase 1, moved to persist across restarts).
+- **Signup**: NEW — up to 8 signups per hour per source IP
+  (`X-Forwarded-For`/`X-Real-IP`, best-effort; see `client-ip.mjs`). Phase 1-3
+  had no signup limit at all, and an unthrottled signup both writes an
+  accounts row and provisions a full tenant directory on first use — a
+  scriptable way to fill the volume's disk. This throttle is a soft limit
+  behind a raw (non-proxied) deployment where a client's own header is the
+  only signal; behind Coolify/Traefik (this app's documented target) the
+  proxy's own hop makes it a real one.
+
+Everything else in `origin-guard.mjs` (same-origin/loopback enforcement) and
+`crypto.mjs` (scrypt, AES-256-GCM with auth-tag verification, 256-bit session
+tokens, a required non-default encryption key) was already in place from
+Phase 1 and reviewed again here without changes needed.
+
+**Not addressed in this pass, and not specific to multi-tenancy:** no
+app-wide request body size cap exists yet (a signed-in tenant could still
+send an oversized JSON body to a route without its own explicit ceiling — the
+CV routes cap at 200KB, `settings/api-key` at 2000 chars, but this isn't
+enforced globally). Worth a follow-up if this deployment is ever opened to
+untrusted signups at scale.
 
 ## Optional: linking your LinkedIn on the /about page
 
