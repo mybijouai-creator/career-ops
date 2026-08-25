@@ -15186,9 +15186,12 @@ try {
         pass('web pdf write-scope unit suites pass (#2185)');
       } else {
         // The signal distinguishes a timeout/kill from an assertion failure —
-        // run()'s default 30s is short for six suites in one child process.
+        // run()'s default 30s is short for now-50+ suites in one child process.
+        // formatRunFailure() is the actual diagnostic: without it, a failure
+        // here prints only "it failed", never which of the ~50 files' which
+        // assertion — exactly the gap #3035 added that helper for.
         const killed = lastRunFailure()?.signal;
-        fail(`web pdf write-scope unit suites failed${killed ? ` (killed: ${killed})` : ''} (run: node --test ${webUnits.join(' ')})`);
+        fail(`web pdf write-scope unit suites failed${killed ? ` (killed: ${killed})` : ''}: ${formatRunFailure()} (run: node --test ${webUnits.join(' ')})`);
       }
 
       if (invocation && prompts) {
