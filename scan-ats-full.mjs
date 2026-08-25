@@ -616,6 +616,20 @@ async function filterLive(offers) {
 
 // ── Main ────────────────────────────────────────────────────────────
 
+// A fatal, pre-completion exit still has to honor the --json contract: stdout
+// is either exactly one JSON object or nothing at all (#2185-adjacent — same
+// discipline the web's own pdf-mode envelope requires of the CLI agent).
+// Without this, any early guard's console.error+process.exit(1) leaves the
+// web caller (web/src/lib/core/scan.ts) with an empty, unparseable stdout and
+// no way to tell "the scanner never ran" apart from "genuinely 0 matches" —
+// it falls back to a generic "no readable output" message that throws away
+// the actual reason. `message` is already logged to stderr by the caller
+// before this runs; this only adds the machine-readable echo.
+function exitFatal(message, json) {
+  if (json) process.stdout.write(JSON.stringify({ error: message, offers: [] }));
+  process.exit(1);
+}
+
 async function main() {
   const opts = parseArgs(process.argv);
   let checkpoint = null;
@@ -623,11 +637,11 @@ async function main() {
     const cp = loadCheckpoint();
     if (!cp) {
       console.error(`Error: --resume passed but no checkpoint found at ${CHECKPOINT_PATH}.`);
-      process.exit(1);
+      exitFatal(`--resume passed but no checkpoint found at ${CHECKPOINT_PATH}.`, opts.json);
     }
     if (!checkpointCompatible(cp, opts)) {
       console.error('Error: checkpoint was written with different settings (--ats/--limit/--include-undated, or --shuffle is set) — rerun with the original flags, or delete the checkpoint to start fresh.');
-      process.exit(1);
+      exitFatal('checkpoint was written with different settings (--ats/--limit/--include-undated, or --shuffle is set) — rerun with the original flags, or delete the checkpoint to start fresh.', opts.json);
     }
     checkpoint = cp;
   } else if (loadCheckpoint() && !opts.dryRun) {
@@ -643,7 +657,7 @@ async function main() {
 
   if (!existsSync(PORTALS_PATH)) {
     console.error('Error: portals.yml not found. Run onboarding first — the reverse scan reuses its title_filter/location_filter.');
-    process.exit(1);
+    exitFatal('portals.yml not found. Run onboarding first — the reverse scan reuses its title_filter/location_filter.', opts.json);
   }
   const config = yaml.load(readFileSync(PORTALS_PATH, 'utf-8'));
   const fullTitleFilterConfig = resolveTitleFilterConfig(config);
@@ -801,7 +815,7 @@ async function main() {
         && checkpoint.current.datasetHash !== datasetHash;
       if (checkpoint.current.datasetLen !== list.length || hashMismatch) {
         console.error(`Error: ${name} company dataset changed since the checkpoint — resume order is no longer valid. Delete ${CHECKPOINT_PATH} and rerun.`);
-        process.exit(1);
+        exitFatal(`${name} company dataset changed since the checkpoint — resume order is no longer valid. Delete ${CHECKPOINT_PATH} and rerun.`, opts.json);
       }
       startAt = checkpoint.current.resumeAt;
     }
@@ -1101,6 +1115,9 @@ async function main() {
 if (import.meta.url === pathToFileURL(process.argv[1] || '').href) {
   main().catch(err => {
     console.error('Fatal:', err.message);
-    process.exit(1);
+    // Re-checking argv directly (not an opts.json captured earlier) because an
+    // uncaught exception this deep may happen before parseArgs() ever returns
+    // — see exitFatal()'s comment for why stdout still needs a valid envelope.
+    exitFatal(err.message, process.argv.includes('--json'));
   });
 }
